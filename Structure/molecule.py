@@ -11,7 +11,6 @@ class Molecule:
     def __init__(self):
         Molecule.molid +=1
         
-
     @abstractmethod
     def molecule_type(self):
         """"Return a string representing the type of molecule this is."""

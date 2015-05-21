@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 
-__all__=['configstruc', 'filetype', 'loadstruc', 'molecule', 'protein']
-
 from loadstruc import *
+
+__all__=['configstruc', 'loadpdb', 'loadstruc', 'molecule', 'protein']
