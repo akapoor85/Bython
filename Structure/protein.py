@@ -26,37 +26,13 @@ class Protein(Molecule, Atom):
     
     def __init__(self):
         Molecule.__init__(self)
+        self.molid = Molecule.molid
         self.nor = 0   # Number of residues in a protein
         self.nohet = 0 # Number of hetero residues in a protein
         self.chains = [] # List of different chains of a protein
         self.resids = [] # List of residue ids of a protein
         self.residue = {}   # Information about each residue. Key: Residue id.
     
-    def AddToResidue(self, atom=None, seg=None, occ=1.0, bfac=0.0):
-        '''
-        Add atom information to build a residue (one atom at a time).
-        Argument atom is the class Atom object.
-        occ and bfac correspond to occupancy and b-factor of an atom
-        represented by object atom.
-        seg is the segment (Protein or Hetero) to which an atom belongs.
-        '''
-        try:
-            assert(isinstance(atom, Atom)) #Check if atom is an object of class Atom
-        except AssertionError:
-            sys.exit('** Argument atom must be object of class Atom **.\nInvalid atom argument to AddToResidue.')
-        
-        try:
-            assert(seg.lower() in ['protein', 'hetero']) #Check if seg is passed correctly
-        except AssertionError:
-            sys.exit('** Argument seg must be either Protein or Hetero **.\nInvalid seg argument to AddToResidue.')
-        
-        if not self.residue.has_key(atom.resno):
-            self.residue[atom.resno]= {'name': atom.resname, 'chain': atom.chain, 'segment': seg,
-                                       'atoms':{atom.idx:{'name':atom.name, 'cord': [atom.cordx,atom.cordy,atom.cordz],
-                                        'B': bfac, 'O': occ}}}
-        else:
-            self.residue[atom.resno]['atoms'][atom.idx]= {'name':atom.name,'cord': [atom.cordx,atom.cordy,atom.cordz],'B': bfac, 'O': occ}
-        
     def GetNor(self):
         'Returns number of residues in the segment protein'
         self.nor = len([key for key in self.residue if self.residue[key]['segment'].lower()=='protein'])

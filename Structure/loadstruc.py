@@ -11,7 +11,7 @@ import sys
 import os
 import urllib
 from configstruc import *
-from loadpdb import Loadpdb
+from loadpdbmulti import Loadpdb
 
 def FetchPDB(pdbid=None,destination=None):
     '''
