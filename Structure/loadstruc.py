@@ -11,7 +11,7 @@ import sys
 import os
 import urllib
 from configstruc import *
-from loadpdbmulti import Loadpdb
+from loadpdb import Loadpdb
 
 def FetchPDB(pdbid=None,destination=None):
     '''
@@ -29,21 +29,15 @@ def FetchPDB(pdbid=None,destination=None):
     if destination == None:
         destination = os.getcwd()
         
-    filename= destination+"/"+pdbid+".pdb"
+    filename= os.path.join(destination,pdbid+".pdb")
     urllib.urlretrieve(url,filename)
 
-def Loadstruc(intype=None, moltype=None, filename=None, hetatm = 'yes'):
+def Loadstruc(intype=None, filename=None, hetatm = True, verbose=False):
     '''
     Load an input molecule structure file.
     intype: filetype of input file (ex: PDB, mol2 etc.)
-    moltype: Molecule type (ex: Protein, Lipid, ligand etc.)
     hetatm: Load data for hetatm records (default: yes)
     '''
-    try:
-        assert(moltype.lower() in Mol_types) #Check if molecule type recognized
-    except AssertionError:
-        sys.exit("Bython does not handle "+moltype+" molecule")
-    
     try:
         assert(intype.lower() in Struc_in_formats) #Check if input format recognized
         strucfile = open(filename, 'r')
@@ -53,7 +47,7 @@ def Loadstruc(intype=None, moltype=None, filename=None, hetatm = 'yes'):
         sys.exit("Cannot locate file "+ filename+ ". Invalid filename or path!")
     
     if intype.lower() == 'pdb':
-        return Loadpdb(pdb=strucfile, molpdb=moltype, hetatm=hetatm)
+        return Loadpdb(pdb=strucfile, hetatm=hetatm, verbose=verbose)
     
 
         

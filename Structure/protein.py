@@ -8,7 +8,6 @@ about each residue in a protein is stored in a nested dictionary "residue".
 The structure of dictionary residue is:
 residue[key-> residue id] = {name: resname,
                              chain: chain id,
-                             segment: segment name (->either Protein or Hetero),
                              atoms:{atom number: {name: atom name, cord: [cordx, cordy, cordz],
                                                   B: b-factor, O: occupancy}
                                     }
@@ -28,55 +27,10 @@ class Protein(Molecule, Atom):
         Molecule.__init__(self)
         self.molid = Molecule.molid
         self.nor = 0   # Number of residues in a protein
-        self.nohet = 0 # Number of hetero residues in a protein
-        self.chains = [] # List of different chains of a protein
         self.resids = [] # List of residue ids of a protein
+        self.atmidx = [] # List of atom indices  
         self.residue = {}   # Information about each residue. Key: Residue id.
     
-    def GetNor(self):
-        'Returns number of residues in the segment protein'
-        self.nor = len([key for key in self.residue if self.residue[key]['segment'].lower()=='protein'])
-        return self.nor
-    
-    def GetNohet(self):
-        'Returns number of hetero residues in a protein (from segment Hetero)'
-        self.nohet = len([key for key in self.residue if self.residue[key]['segment'].lower()=='hetero'])
-        return self.nohet
-    
-    def GetChains(self):
-        'Returns id of different chains in a protein'
-        self.chains = list(set([self.residue[key]['chain'] for key in self.residue if self.residue[key]['segment'].lower()=='protein']))
-        return self.chains
-    
-    def GetCord(self, resid= None, hetatm = 'no'):
-        '''
-        Returns coordinates (as numpy array) of all atoms (ordered by atom index) of a
-        residue specfied by residue id or for all atoms in a protein (resid: all)
-        By default only segment protein (hetatm = 'no') is returned for resid 'all'. 
-        '''
-        try:
-            assert(resid != None) #Check if resid is passed
-        except AssertionError:
-            sys.exit('** No residue id provided **. \nValid input to resid: residue id or all.')
-            
-        if str(resid).lower() == 'all' and hetatm.lower() == 'yes':
-            resid = sorted(self.residue)
-        if str(resid).lower() == 'all' and hetatm.lower() == 'no': # Extract id for segment Protein only
-            resid = [key for key in sorted(self.residue) if self.residue[key]['segment'].lower() == 'protein']
-        else:
-            resid = [resid]
-                  
-        coordinates = [self.residue[key]['atoms'][atmidx]['cord'] for key in resid for atmidx in sorted(self.residue[key]['atoms'])]
-        return numpy.array(coordinates)
-    
-    def GetResids(self):
-        '''
-        Returns a list of residue ids in a protein. Hetero segment is not included.
-        For residue ids of protein+hetero, just use Objectname.residue.keys()
-        '''
-        self.resids = [key for key in sorted(self.residue) if self.residue[key]['segment'].lower() == 'protein']
-        return self.resids
-        
     def molecule_type(self):
         'Return a string representing the type of molecule this is.'
         return "Protein"

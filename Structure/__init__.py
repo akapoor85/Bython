@@ -2,4 +2,4 @@
 
 from loadstruc import *
 
-__all__=['configstruc', 'loadpdb', 'loadstruc', 'molecule', 'protein']
+__all__=['configstruc', 'loadpdb', 'loadstruc', 'molecule', 'protein', 'ligand']
