@@ -1,7 +1,15 @@
 Bython (BioPython) is a python package to do computation on biological macromolecules such as proteins, lipids, small molecules etc. It is an effort to better organize my existing code (developed during my PhD) along with new functionalities into one comprehensive package.
 
-The code is under active development and no way near completion. The functionalities introduced so far have been tested locally. Please leave a comment if you find any bugs, or have some suggestions.
+The code is under active development and no way near completion. The functionalities introduced so far have been tested locally. Please leave a comment (abhijeet.kapoor@mssm.edu) if you have any suggestions, or report an issue if you find some bugs.
+
+LICENSE
+	Bython is licensed under MIT license.
+
+SUPPORT
+	Bython Wiki: Under development
+	Bug reports can be filed here: https://git.mssm.edu/kapooa03/Bython/issues
 
 TO DO:
 	1) Complete OBcontact implementation.
-	2) Add ipython docs
+	2) Add ipython docs and Bython Wiki
+	3) Update README to use Markdown
