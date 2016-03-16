@@ -213,7 +213,7 @@ class Molecule:
             sys.exit('Add missing atom to file mass and rerun!')
         return numpy.array(return_mass)
             
-    def GetCenter(self, cen_type = 'geom', custom_weight=None):
+    def GetCenter(self, cen_type = 'geom', custom_weight=[]):
         '''
         Returns the geometric center or center of mass of a molecule.
         cen_type: either geom (geometric) or mass or custom. When custom, a list of size N (no. of atoms) must be passed containing
@@ -227,7 +227,7 @@ class Molecule:
             weight = self.GetMass()
         elif cen_type.lower() == 'custom':
             try:
-                assert custom_weight != None
+                assert len(custom_weight) == 0
             except AssertionError:
                 sys.exit('*** Required argument custom_weight not passed ***')
             

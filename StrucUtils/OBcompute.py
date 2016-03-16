@@ -19,6 +19,28 @@ def OBDistMat(mol_object):
     
     return measure.DistMat(mol_object.GetCord('all'))    
 
+def OBRotate(mol_object, axis=None, thetha=None):
+    '''
+    This function applies rotation matrix on input object along the axis specified in 'axis'
+    and returns the new set of coordnates as NX3 array.
+    'axis' can be either of x, y, or z in which case one single rotation is performed, or it
+    can be a list of axis (for ex: [z,x,y,x...]) in which case multiple rotations are performed
+    in the order of axis values in 'axis'.
+    'thetha' is the angle of rotation in degrees, It can be a single value or a list of values only if axis
+    is also a list    
+    '''
+    try:
+        assert mol_object.molecule_type() in ['Protein', 'Lipid', 'Ligand']
+    except AttributeError:
+        sys.exit("***INVALID INPUT TYPE***.\nFunction expects a molecule_type (Protein, Lipid, Ligand) object.")
+    
+    try:
+        assert(axis != None and thetha !=None) #Check if axis is passed
+    except AssertionError:
+        sys.exit('*** AXIS and/or THETHA CANNOT BE NONE ***. \nValid input to axis is one of: x, y, z or [list of axis in the order to perform multiple rotations].')
+    
+    return measure.Rotate(mol_object.GetCord('all'), axis, thetha)
+
 def OBContacts(**kwargs):
     '''
     Calculates all contacts within a molecule (if only one molecule passed)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 
-from Structure import *
+#__all__ = ['Structure', 'StrucUtils']
 
 

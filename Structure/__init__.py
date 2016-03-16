@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 
-from loadstruc import *
+__all__=['configstruc', 'loadpdb', 'loadstruc', 'molecule', 'protein', 'ligand', 'lipid']
 
-__all__=['configstruc', 'loadpdb', 'loadstruc', 'molecule', 'protein', 'ligand']
+from loadstruc import (FetchPDB, Loadstruc)
