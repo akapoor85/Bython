@@ -9,4 +9,4 @@ Mol_types = {'protein': ['ala', 'arg', 'asn', 'asp', 'cys', 'glu',
                          'nma'],
             'lipid': ['pop', 'popc'],
             'ligand': ['suv', 'ola', 'hoh', 'hem', 'chl', 'chl1', 'nal', 'jdc',
-                       'cit', 'olc', 'peg']} 
+                       'cit', 'olc', 'peg', 'mg', 'gnp']} 

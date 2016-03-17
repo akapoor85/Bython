@@ -4,6 +4,7 @@ from __future__ import division
 import numpy
 import sys
 
+
 def DistMat(cord):
     '''
     Equivalent to Matlab pdsit function. It takes input a NX3 numpy array (cord)

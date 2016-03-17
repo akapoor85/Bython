@@ -30,6 +30,7 @@ class Protein(Molecule, Atom):
         self.resids = [] # List of residue ids of a protein
         self.atmidx = [] # List of atom indices  
         self.residue = {}   # Information about each residue. Key: Residue id.
+        self.chain_break = False # This will be True if chain breaks are encountered
     
     def molecule_type(self):
         'Return a string representing the type of molecule this is.'

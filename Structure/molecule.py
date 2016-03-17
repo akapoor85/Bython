@@ -6,6 +6,7 @@ from copy import deepcopy
 import numpy
 import sys
 import os
+from Bython.StrucUtils import DistMat
 
 class Molecule:
     'Abstract Base class for a molecule'
@@ -65,6 +66,7 @@ class Molecule:
             sys.exit('** No atom index provided **. \nValid input to atmidx: atom index.')
         
         try:
+            #Create a generator that returns the requested coordinate
             coordinates = next(self.residue[key]['atoms'][atmidx]['cord'] for key in sorted(self.residue) for atm_id in sorted(self.residue[key]['atoms']) if atmidx==atm_id)
         except StopIteration:
             print "*** INVALID INPUT ***. \nInput atmidx out of range"
@@ -242,7 +244,66 @@ class Molecule:
         ab=numpy.dot(weight,cord)
         
         return numpy.dot(weight,cord)/numpy.sum(weight)
+    
+    def GetWithin(self, mol_object=None, cutoff=4.0, ctype='bit', res_bit=True):
+        '''
+        Returns an array of atom indices of molecule referred by mol_object
+        that are within distance cutoff. Additionally, an array is returned with either
+        minimum distance (ctype='dist') of each atom in mol_object or bit (ctype='bit') representing
+        presence (1) or absence (0) of contact for each atom. If mol_object is of protein type then bit
+        representation is returned per residue (res_bit=True) instead of per atom 
+        '''
         
+        try:
+            assert mol_object.molecule_type() in ['Protein', 'Lipid', 'Ligand']
+        except AttributeError:
+            sys.exit("***INVALID INPUT TYPE***.\nFunction expects a molecule_type (Protein, Lipid, Ligand) object.")
+        
+        try:
+            assert ctype.lower() in ['bit', 'dist']
+        except AssertionError:
+            sys.exit('***Invalid contact type***\nValid options: dist or bit')
+        
+        no_of_atoms_self = len(self.atmidx) # nS; nM -> no of atoms in mol_object
+        
+        #Calculate Distance Matrix for concatenated coordinates i.e. (nS+nM) x (nS+nM)
+        cord_self = self.GetCord('all')
+        cord_mol = mol_object.GetCord('all')
+        cord_self_mol = numpy.concatenate((cord_self,cord_mol))
+        dist_mat_self_mol = DistMat(cord_self_mol)
+        
+        #Slice nM x nS from (nS+nM) x (nS+nM) distance matrix
+        mol_contact_mat = dist_mat_self_mol[no_of_atoms_self:, :no_of_atoms_self]
+        #Get the minimum distance for each mol atom
+        mol_min_dist = mol_contact_mat.min(axis=1)
+        #Get atom indices for atoms in contact
+        if mol_object.molecule_type() != 'Ligand' and not mol_object.chain_break:
+            contact_atom_ind = numpy.array(mol_object.atmidx)[mol_min_dist < cutoff]
+        else:
+            contact_atom_ind = mol_object.GetIdxbyRes()[mol_min_dist < cutoff]
+        #Get bit-representation for contacts
+        if ctype.lower() == 'bit':
+            mol_min_dist[mol_min_dist < cutoff] = 1
+            mol_min_dist[mol_min_dist >= cutoff] = 0
+            
+            #Compute residue bits if mol_object is protein
+            if mol_object.molecule_type() == 'Protein' and res_bit:
+                residue_bit = numpy.zeros(mol_object.nor, dtype='int')
+                for res_bit_ind, resid in enumerate(sorted(mol_object.residue)):
+                    #Check if any of the residue atoms is in contact
+                    if any(a_id in contact_atom_ind for a_id in mol_object.residue[resid]['atoms']):
+                        residue_bit[res_bit_ind] = 1
+                return contact_atom_ind, residue_bit
+        return contact_atom_ind, mol_min_dist
+    
+    def GetIdxbyRes(self):
+        '''
+        Returns atom indices for all residues in residue number order.
+        Required in case of chain breaks/insertions, where objects atmidx attribute
+        is not ordered by residue numbers
+        '''
+        atom_indexes = numpy.array([atmidx for key in sorted(self.residue) for atmidx in sorted(self.residue[key]['atoms'])])
+        return atom_indexes
     
     @abstractmethod
     def molecule_type(self):

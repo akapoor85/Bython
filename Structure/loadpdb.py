@@ -127,4 +127,5 @@ def Loadpdb(pdb=None, hetatm= True, verbose=False):
                 for res in break_indices[0]:
                     print mol_data[key].resids[res],
                 print "\n"
+                mol_data[key].chain_break = True
     return mol_data 

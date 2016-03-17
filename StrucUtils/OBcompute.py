@@ -15,11 +15,11 @@ def OBDistMat(mol_object):
     try:
         assert mol_object.molecule_type() in ['Protein', 'Lipid', 'Ligand']
     except AttributeError:
-        sys.exit("***INVALID INPUT TYPE***.\nFunction expects a molecule_type (Protein, Lipid, Ligand) object.")
+        sys.exit("***INVALID INPUT TYPE***.\nOBDistMat expects a molecule_type (Protein, Lipid, Ligand) object.")
     
     return measure.DistMat(mol_object.GetCord('all'))    
 
-def OBRotate(mol_object, axis=None, thetha=None):
+def OBRotate(mol_object=None, axis=None, thetha=None):
     '''
     This function applies rotation matrix on input object along the axis specified in 'axis'
     and returns the new set of coordnates as NX3 array.
@@ -41,6 +41,7 @@ def OBRotate(mol_object, axis=None, thetha=None):
     
     return measure.Rotate(mol_object.GetCord('all'), axis, thetha)
 
+"""
 def OBContacts(**kwargs):
     '''
     Calculates all contacts within a molecule (if only one molecule passed)
@@ -59,7 +60,7 @@ def OBContacts(**kwargs):
                  "\nVALID INPUT FORMAT: object1= molecule_object, object2= molecule_object, output= file_name")
     except AssertionError:
         sys.exit("Unrecognized argument name passed: %s" % ",".join(kwargs.keys()))
-        
+"""     
     
         
         
