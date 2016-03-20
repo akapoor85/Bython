@@ -10,7 +10,7 @@ of the molecule to function FetchPDB.
 import sys
 import os
 import urllib
-from configstruc import *
+from configstruc import Struc_in_formats
 from loadpdb import Loadpdb
 
 def FetchPDB(pdbid=None,destination=None):

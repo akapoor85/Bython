@@ -6,7 +6,12 @@ LICENSE
 	Bython is licensed under MIT license.
 
 SUPPORT
-	Bython Wiki: Under development
+	Bython Wiki: https://git.mssm.edu/kapooa03/Bython/wiki
 	Bug reports can be filed here: https://git.mssm.edu/kapooa03/Bython/issues
+
+RECENT UPDATES
+	MARCH 2016
+		Added function to compute contacts (GetWithin())
+		Basic Chemifo setup 
 
 
