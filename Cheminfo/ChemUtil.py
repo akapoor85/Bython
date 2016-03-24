@@ -5,7 +5,7 @@ from rdkit import Chem
 import sys
 import sanifix4
 
-def loadmol(intype=None, molstring=None, remH = False):
+def Loadmol(intype=None, molstring=None, remH = False,  no_sani=False):
     #First load input mol as RDKit mol without sanitizing
     if intype.lower() == 'pdb':
         temp_mol = Chem.MolFromPDBFile(molstring, removeHs=remH, sanitize=False)
@@ -20,8 +20,11 @@ def loadmol(intype=None, molstring=None, remH = False):
         
     #Sanitize mol
     try:
-        Chem.SanitizeMol(temp_mol)
-        #Sanitization successful when no exception raised
+        if not no_sani:
+            if remH:
+                temp_mol=Chem.RemoveHs(temp_mol)
+            Chem.SanitizeMol(temp_mol)
+            #Sanitization successful when no exception raised
         return temp_mol
     except ValueError as err:
         if "can't kekulize" in err.message.lower():

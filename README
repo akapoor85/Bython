@@ -11,7 +11,12 @@ SUPPORT
 
 RECENT UPDATES
 	MARCH 2016
-		Added function to compute contacts (GetWithin())
-		Basic Chemifo setup 
+		Added 2D Fingerprints in Cheminfo
+		Added similarity measures in Cheminfo
+		Readmol in Cheminfo now sets neighbors and property of each atom
+
+PREVIOUS UPDATES
+	Added function to compute contacts (GetWithin())
+	Basic Cheminfo setup 
 
 
