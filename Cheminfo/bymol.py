@@ -18,8 +18,11 @@ class Bymol:
         self.name = ''
         self.atoms = None #holds RDKit Atom Sequence object
         self.fpt = None #Holds a user-requested 2D fingerprint
-        self.property = {} #To set default and user-defined properties for a molecule
+        self.property = {} #To set default and user-defined properties for a molecule. key: atom index, value: {property name: property value}
         self.neighbors = {} #For each atom, a tuple of directly bonded neighbors. key: atom index, value: (list of neighbor indices)
+        self.rings = () #A tuple of all rings (atom-indices)
+        self.n_aromatic = 0
+        self.n_heavy = 0
         Bymol.count = Bymol.count + 1
     
     def Readmol(self, intype=None, molstring=None, name='',remH = False, no_sani=False):
@@ -29,10 +32,7 @@ class Bymol:
         to Bymol instance attribute by_mol. A molecule name can be assigned wih name. 
         By default, RDKit removes hydrogens (remH) when reading pdb or mol2 file. Here, we will
         retain all explicit hydrogens in structure files. In SMILES, hydrogen treatment is implicit even
-        when defined explicitly.
-        Set no_sani to False (no sanitization) if input molecule must have 4-valence non-aromatic hydrogen,
-        as RDKit does not allow 4 valence non-aromatic hydrogens. Aromatic nitorogen with 4-valence is fixed
-        using sanifix4 internally (in that case leave no_sani to False).
+        when defined explicitly. Set no_sani to False (no sanitization) to turn off RDKit sanitization. 
         '''
         valid_intype = ['mol2', 'pdb', 'smi', 'mol']
         try:
@@ -46,6 +46,7 @@ class Bymol:
         self.name = name
         self.atoms = self.by_mol.GetAtoms()
         #Set neighbors and property dicts
+        count_aro = 0 #Number of aromatic atoms
         for atom in self.by_mol.GetAtoms():
             for neighb in atom.GetNeighbors():
                 if not self.neighbors.has_key(atom.GetIdx()):
@@ -54,7 +55,14 @@ class Bymol:
                     self.neighbors[atom.GetIdx()]+= (neighb.GetIdx(),)
             self.property[atom.GetIdx()] = {'symbol': atom.GetSymbol()}
             self.property[atom.GetIdx()]['aromatic'] = atom.GetIsAromatic()
+            if self.property[atom.GetIdx()]['aromatic']:
+                count_aro +=1
             self.property[atom.GetIdx()]['inring'] = atom.IsInRing()
+            self.property[atom.GetIdx()]['charge'] = 0.0
+        ring=self.by_mol.GetRingInfo()
+        self.rings = ring.AtomRings()
+        self.n_aromatic = count_aro
+        self.n_heavy = self.by_mol.GetNumHeavyAtoms()
     
     def Set_Fingerprint(self, fpname='linear', bitsize=2048, fptype='bit', diameter=4):
         '''
