@@ -11,11 +11,14 @@ SUPPORT
 
 RECENT UPDATES
 	MARCH 2016
-		Added 2D Fingerprints in Cheminfo
-		Added similarity measures in Cheminfo
-		Readmol in Cheminfo now sets neighbors and property of each atom
+		Added Trajectory sub-package
+		Added 7-bit/res SIFT calculation on trajectory for any number of ligands
+		Updated Readmol in Cheminfo
 
 PREVIOUS UPDATES
+	Added 2D Fingerprints in Cheminfo
+	Added similarity measures in Cheminfo
+	Readmol in Cheminfo now sets neighbors and property of each atom
 	Added function to compute contacts (GetWithin())
 	Basic Cheminfo setup 
 
