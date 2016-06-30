@@ -37,7 +37,7 @@ def SIFT_7bit(traj_ob=None, lig_top=None, res_index=None, aro_cut=4.0, apolar_cu
         lig_heavy_indices.append(temp)
                
     if verbose:
-        print ("Protein residues used: %s") % res_index
+        print ("Protein residue indices used: %s") % res_index
         print ("Ligand(s) used: %s") % ', '.join(lig_names)
         print ("Number of heavy atoms in Ligand(s) used: %s") % no_heavy_lig
         print ("Number of aromatic atoms in Ligand(s) used: %s") % no_lig_aro

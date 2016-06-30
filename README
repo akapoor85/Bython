@@ -14,6 +14,7 @@ RECENT UPDATES
 		Added trajectory RMSD matrix calculation, clustering and analysis methods
 		Added functions to plot fractional SIFT over trajectory.
 		Added Get_Index in trajectory (partially complete).
+		Updated Tutorial in Docs
 
 PREVIOUS UPDATES
 	Added 7-bit/res SIFT calculation on trajectory for any number of ligands

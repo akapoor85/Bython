@@ -181,6 +181,8 @@ class Trajectory:
         residue_name_num = [partial_traj.topology.residue(residue_index) for residue_index in protein_resindex]
         residue_labels = []
         for each_res in residue_name_num:
+            if sc_only and str(each_res)[0:3].upper() == 'GLY':
+                continue
             for sift_type in ['Apolar', 'Aro_F2F', 'Aro_E2F', 'Hbond_ProD', 'Hbond_ProA', 'Elec_ProP', 'Elec_ProN']:
                 residue_labels.append(str(each_res)+'_'+sift_type)
         #Calculate Tanimoto dissimilarity matrix
@@ -229,7 +231,7 @@ class Trajectory:
         valid_algo = ['DBSCAN']
         valid_dist = ['rmsd', 'tanimoto']
         try:
-            assert use_algo.upper() in valid_algo and use_dist.lower in valid_dist
+            assert use_algo.upper() in valid_algo and use_dist.lower() in valid_dist
         except AssertionError:
             raise ValueError('Valid values for parameters\nuse_algo: %s\nuse_dist: %s' % (', '.join(valid_algo), ', '.join(valid_dist)))
         if use_algo.upper() == 'DBSCAN':
