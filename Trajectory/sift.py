@@ -54,6 +54,9 @@ def SIFT_7bit(traj_ob=None, lig_top=None, res_index=None, aro_cut=4.0, apolar_cu
             res_heavy_idx = [a_idx for a_idx in traj_ob.topology.select("resid " + str(q_res))
                              if traj_ob.topology.atom(a_idx).element.symbol != 'H']
         else:
+            #Do only if residue is not Gly
+            if traj_ob.topology.residue(q_res).name.lower() == 'gly':
+                continue
             res_heavy_idx = [a_idx for a_idx in traj_ob.topology.select("resid " + str(q_res))
                              if traj_ob.topology.atom(a_idx).element.symbol != 'H' and traj_ob.topology.atom(a_idx).is_sidechain == True]
         
@@ -94,10 +97,10 @@ def SIFT_7bit(traj_ob=None, lig_top=None, res_index=None, aro_cut=4.0, apolar_cu
                     temp_bits[4] = 1
             #Check If ligand is within Electrostatic interaction distance
             if numpy.any(pair_distances[pair_distances < elec_cut]):
-                
                 #Check if interaction is Electrostatic
                 prot_pos, prot_neg = IsElectro(traj_ob, lig_top[l_idx], numpy.array(a_pairs_dist),
                                                pair_distances[0], elec_cut, min(lig_heavy_indices[l_idx]))
+                
                 if prot_pos:
                     #Change the protein positive bit
                     temp_bits[5] = 1
@@ -110,13 +113,13 @@ def SIFT_7bit(traj_ob=None, lig_top=None, res_index=None, aro_cut=4.0, apolar_cu
                 sift7bit[l_idx] = temp_bits
             else:
                 sift7bit[l_idx].extend(temp_bits)
-    #Now Combine the bits for different ligands and return it
+    #Now Combine the bits for different ligands (also corresponding residue indexes) and return it
     if len(lig_names)> 1:
-        return [lig_bits for key in sorted(sift7bit) for lig_bits in sift7bit[key]]
+        combined_sift = [lig_bits for key in sorted(sift7bit) for lig_bits in sift7bit[key]]
+        #return combined_sift, list(numpy.array(res_index)+1)*len(sift7bit) #+1 since res_index is 0-based
+        return combined_sift, (res_index)*len(sift7bit)
     else:
-        return sift7bit[0]
-        
-        
+        return sift7bit[0], res_index        
         
 def IsApolar(traj_object, pair_indices, pair_dist, apolar_cut):
     #Get the atom pair indices that are within cutoff
@@ -267,7 +270,6 @@ def IsElectro(traj_object, lig_object, pair_indices, pair_dist, elec_cut, min_li
                 break       
     return prot_pos, prot_neg
     
-
 def GetNeighbor(traj_object, atom_name):
     '''
     Returns a tuple of Neighbors of atom (atom object is returned)
@@ -279,6 +281,7 @@ def GetNeighbor(traj_object, atom_name):
     neighbs = list(set([all_neighb for all_neighb in chain(*each_neighb)]))
     neighbs.remove(atom_name)
     return tuple(neighbs)
+
 
 def GetCross(cord_array):
     '''
@@ -297,7 +300,15 @@ def GetAngle(cord_array):
     dot = numpy.dot(vec_21, vec_31)
     vec_21mod = numpy.sqrt((vec_21*vec_21).sum()) #length of vector 21
     vec_31mod = numpy.sqrt((vec_31*vec_31).sum())
-    return numpy.degrees(numpy.arccos(dot / vec_21mod / vec_31mod))       
+    return numpy.degrees(numpy.arccos(dot / vec_21mod / vec_31mod))
+
+
+
+    
+    
+    
+            
+            
        
     
         

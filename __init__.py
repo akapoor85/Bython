@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 
-__all__ = ['Structure', 'StrucUtils']
+__all__ = ['Structure', 'StrucUtils', 'Trajectory', 'Cheminfo']
 
 

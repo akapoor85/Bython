@@ -1,3 +1,3 @@
-__all__ = ['trajectory', 'sift']
+__all__ = ['trajectory', 'sift', 'trajutils', 'traj_figures']
 
 from trajectory import Trajectory
