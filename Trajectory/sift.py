@@ -238,6 +238,26 @@ def IsHbond(traj_object, lig_object, pair_indices, pair_dist, hbond_cut, min_lig
                     if Thetha_degree > 135.0:
                         hbond_prot_donor = True
                         break #No need to go through rest of the hydrogens
+            #Check if both ligand and protein atom are donor, then Hbond still possible with one as acceptor and other as donor
+            if is_prot_donor and is_lig_donor:
+                #Do Hbond determination for both to see which one is acceptor/donor
+                #Assuming protein donor, go through each neighboring hydrogen atom of protein donor
+                for h_neig in prot_don_hyd:
+                    #Get the coordinates
+                    prot_hyd_cord = traj_object.xyz[:,h_neig.index,:][0]*10
+                    Thetha_degree = GetAngle(numpy.array([a2_lig_cord, prot_hyd_cord, a1_atom_cord]))
+                    if Thetha_degree > 135.0:
+                        hbond_prot_donor = True
+                        break #No need to go through rest of the hydrogens
+                #Assuming ligand donor, go through each neighboring hydrogen atom of ligand donor
+                for h_neig in lig_don_hyd:
+                    #Get the coordinates
+                    lig_hyd_cord = traj_object.xyz[:,h_neig,:][0]*10
+                    Thetha_degree = GetAngle(numpy.array([a1_atom_cord, lig_hyd_cord, a2_lig_cord]))
+                    if Thetha_degree > 135.0:
+                        hbond_prot_acceptor = True
+                        break #No need to go through rest of the hydrogens
+                
             #If both donor and acceptor have been assigned then no need to check further pairs for this residue
             if hbond_prot_acceptor and hbond_prot_donor:
                 break

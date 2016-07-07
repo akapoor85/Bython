@@ -210,6 +210,7 @@ class Trajectory:
             rmsd_index = align_index
         #Reload Trajectory in case user already worked with few/all chunks, also work with entire trajectory at a time
         self.Reload(newchunk=0)
+        s_time = time.clock()
         #Compute pairwise RMSD
         for full_traj in self.traj_iter: #This loop runs only once
             #If reference frame specified, then return RMSD with the reference frame.
@@ -222,6 +223,9 @@ class Trajectory:
                 for frame_index in range(full_traj.n_frames):
                     full_traj.superpose(full_traj[frame_index],  atom_indices = align_index)
                     rmsd_mat[frame_index]= trajutils.RMSD(full_traj, full_traj[frame_index], rmsd_index)*rmsd_unit_factor
+        e_time = time.clock()
+        print "RMSD Matrix Calculation Finished! \nTotal time spent: \n\t%0.2f seconds process time\
+        \n\tOn average, %0.2f seconds per trajectory frame" % (e_time-s_time, (e_time-s_time)/numpy.array(final_sift).shape[0])
         self.rmsd_matrix = rmsd_mat
     
     def Cluster_Trajectory(self, eps=None, min_samples=None, use_algo='DBSCAN', metric='precomputed', use_dist='rmsd'):

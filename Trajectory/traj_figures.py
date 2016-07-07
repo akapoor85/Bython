@@ -4,8 +4,10 @@ from __future__ import division
 import pandas
 import numpy
 import os, sys
-import matplotlib.pyplot as plt
 import trajutils
+import matplotlib.pyplot as plt
+#Now add the following code in case plotting is done on remote servers to avoid backend x-server related issue
+plt.switch_backend('agg')
 
 def plotSIFT(avg_sift=None, residue_labels=None,
              sift_types = ['Apolar','Aro_F2F','Aro_E2F','Hbond_ProD','Hbond_ProA','Elec_ProP','Elec_ProN'],
@@ -36,7 +38,7 @@ def plotSIFT(avg_sift=None, residue_labels=None,
     # Create the general plot and the "subplots" i.e. the bars
     fontS=18
     f, ax1 = plt.subplots(1, figsize=(18,8))
-    f.subplots_adjust(bottom=0.2)
+    #f.subplots_adjust(bottom=0.2)
     # Set the bar width
     bar_width = 0.75
     # positions of the left bar-boundaries
@@ -48,9 +50,9 @@ def plotSIFT(avg_sift=None, residue_labels=None,
         # Create a bar plot, in position bar_1
         if len(bottom) == 0:
             bottom = df[sift_cat]
-            ax1.bar(bar_l, df[sift_cat], width=bar_width, label=sift_cat, alpha=0.5, color=use_col)
+            ax1.bar(bar_l, df[sift_cat], width=bar_width, label=sift_cat, alpha=0.5, color=use_col, edgecolor=use_col)
         else:
-            ax1.bar(bar_l, df[sift_cat], width=bar_width, label=sift_cat, alpha=0.5, color=use_col, bottom = bottom)
+            ax1.bar(bar_l, df[sift_cat], width=bar_width, label=sift_cat, alpha=0.5, color=use_col, bottom = bottom, edgecolor=use_col)
             bottom = bottom + df[sift_cat]
     # set the x ticks with names
     plt.xticks(tick_pos, df['Residue_Name'], rotation="vertical", fontsize=fontS)
