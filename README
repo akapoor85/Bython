@@ -10,13 +10,15 @@ SUPPORT
 	Bug reports can be filed here: https://git.mssm.edu/kapooa03/Bython/issues
 
 RECENT UPDATES
-	JUNE 2016
-		Added trajectory RMSD matrix calculation, clustering and analysis methods
-		Added functions to plot fractional SIFT over trajectory.
-		Added Get_Index in trajectory (partially complete).
-		Updated Tutorial in Docs
+	October 2016
+		Added sidechain chi dihedral calculation in Structure
+		Added classical MDS and 2D plots in trajectory figures
 
 PREVIOUS UPDATES
+	Added trajectory RMSD matrix calculation, clustering and analysis methods
+	Added functions to plot fractional SIFT over trajectory.
+	Added Get_Index in trajectory (partially complete).
+	Updated Tutorial in Docs
 	Added 7-bit/res SIFT calculation on trajectory for any number of ligands
 	Added Trajectory sub-package
 	Updated Readmol in Cheminfo

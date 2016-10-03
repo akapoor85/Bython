@@ -3,7 +3,7 @@
 from __future__ import division
 import numpy
 import os
-from sklearn.cluster import DBSCAN
+from sklearn.cluster import DBSCAN, KMeans
 
 def RMSD(traj, ref, idx):
     '''
@@ -12,16 +12,18 @@ def RMSD(traj, ref, idx):
     '''
     return numpy.sqrt(numpy.sum(numpy.square(traj.xyz[:,idx,:] - ref.xyz[:,idx,:]),axis=(1, 2))/len(idx))
 
-def Cluster_DBSCAN(distance_mat=None, eps=None, min_samples=None, metric= 'precomputed'):
+def Cluster_Traj(distance_mat=None, eps=None, min_samples=None, metric= 'precomputed', use_algo='DBSCAN' ):
     '''
-    DBSCAN clustering on input Distance matrix, for ex., RMSD_Matrix
+    Clustering of input Distance matrix, for ex., RMSD_Matrix
     '''
-    try:
-        assert eps != None and min_samples != None
-    except AssertionError:
-        raise ValueError('DBSCAN parameters eps and min_samples cannot be None.')
-    db = DBSCAN(eps=eps, min_samples=min_samples, metric=metric).fit(distance_mat)
-    cluster_labels = db.labels_
+    if use_algo.lower() == 'dbscan':
+        try:
+            assert eps != None and min_samples != None
+        except AssertionError:
+            raise ValueError('DBSCAN parameters eps and min_samples cannot be None.')
+        cluster_estimator = DBSCAN(eps=eps, min_samples=min_samples, metric=metric).fit(distance_mat)
+    
+    cluster_labels = cluster_estimator.labels_
     return cluster_labels
 
 def Process_Clusters(traj, cluster_labels, align_index=None, rmsd_index=None, save_nFrames=100, beta=1.0, rmsd_unit_factor=10,save_format='xtc',save_path=''):
@@ -39,12 +41,12 @@ def Process_Clusters(traj, cluster_labels, align_index=None, rmsd_index=None, sa
     #If rmsd_index not defined, assign align_index to rmsd_index
     if rmsd_index == None:
         rmsd_index = align_index
-    print '-'*88
+    print '-'*110
     print('Total frames: %d\t Total Noise: %d\t Total Classified: %d\t # of Clusters: %d\n'
           % (len(cluster_labels), len(cluster_labels[cluster_labels == -1]), len(cluster_labels)-len(cluster_labels[cluster_labels == -1]),
              len(set(cluster_labels)) - (1 if -1 in cluster_labels else 0)))
-    print "Cluster_Label\tCluster_Size\tMaximum_RMSD\tCluster_Spread (Avg. RMSD from Centroid)"
-    print '-'*88
+    print "Cluster_Label\tCluster_Size\tMax_RMSD_from_Centroid\tCluster_Spread (Avg. RMSD)  Centroid_Frame_Id"
+    print '-'*110
     for c_label in set(cluster_labels):
         if c_label != -1: #Ignore noise
             frame_indices = numpy.where(cluster_labels == c_label)[0]
@@ -63,7 +65,7 @@ def Process_Clusters(traj, cluster_labels, align_index=None, rmsd_index=None, sa
             max_rmsd = numpy.max(rmsd_mat[medoid_index])
             #Save Cluster centroid pdb
             c_medoid.save(os.path.join(save_path, 'Cluster_'+str(c_label)+'_Centroid.pdb'))
-            print '%d\t\t%d\t\t%f\t\t%f' % (c_label, len(frame_indices), max_rmsd,c_spread) 
+            print '%d\t\t%d\t\t%f\t\t%f\t\t\t%d' % (c_label, len(frame_indices), max_rmsd,c_spread, frame_indices[medoid_index]) 
             #Superpose savenFrames cluster frames on centroid and save savenFrames cluster frames
             if save_nFrames < len(frame_indices):
                 frame_indices = numpy.random.choice(frame_indices, size=save_nFrames, replace = False)

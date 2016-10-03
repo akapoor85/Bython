@@ -101,6 +101,7 @@ class Molecule:
     def GetDihed(self, atm1, atm2, atm3, atm4):
         '''
         Returns the dihedral angle (in degrees) formed by four atoms around bond connecting atm2 and atm3.
+        atm1, atm2, atm3, and atm4 are atom indices corresponding to atom1, atom2, atom3, and atom4.
         '''
         cord_atm1 = self.GetCordbyIdx(atm1)
         cord_atm2 = self.GetCordbyIdx(atm2)

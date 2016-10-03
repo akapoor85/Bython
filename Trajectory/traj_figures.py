@@ -38,7 +38,7 @@ def plotSIFT(avg_sift=None, residue_labels=None,
     # Create the general plot and the "subplots" i.e. the bars
     fontS=18
     f, ax1 = plt.subplots(1, figsize=(18,8))
-    #f.subplots_adjust(bottom=0.2)
+    f.subplots_adjust(bottom=0.2)
     # Set the bar width
     bar_width = 0.75
     # positions of the left bar-boundaries
@@ -92,4 +92,38 @@ def plot_CMDS(distance_matrix,labels, marker_size_clust=5, marker_size_noise=2, 
         plt.plot(xy[:,0],xy[:,1],marker,markersize=msize,markerfacecolor=col, label='Cluster_%d'%k)
     plt.legend(loc='best', fontsize=10)
     plt.savefig(os.path.join(save_path,filename))
+    plt.close('all')
+    
+def plot_2D(mat_2D=None, outfile='Plot_2D.png', f_size=(4.0,4.0), vmin=None, vmax=None, xlab='', ylab='', cbar_lab='',
+            font_lab= 3.0, font_tick=1.5, xtick_lab=[], ytick_lab=[], cmap='jet', interpolation='nearest'):
+    if vmin == None:
+        vmin = numpy.amin(mat_2D)
+    if vmax == None:
+        vmax = numpy.amax(mat_2D)
+        
+    f1=plt.figure(figsize=f_size)
+    #f1.subplots_adjust(left=0.18,bottom=0.15)
+    ax = plt.gca()
+    #cmap= colors.ListedColormap(['#FFFFFF', '#FF99FF','#FF00FF','#00FFFF','#FFD700','#FF0000','#0000CD','#006400'])
+    #bounds=[0.0,0.2,0.4,0.6,0.8,1.0]
+    #bounds=[0.0,0.2,0.4,0.5,0.6,0.7,0.8,0.9,1.0]
+    #norm = colors.BoundaryNorm(bounds, cmap.N)
+
+    img= plt.imshow(mat_2D,interpolation=interpolation,origin='lower', vmin=vmin,vmax=vmax, cmap=cmap)
+    plt.xlabel(xlab, fontsize = font_lab)
+    plt.ylabel(ylab, fontsize = font_lab)
+    #ax.set_xticks(range(len(mat_2D)))
+    #ax.set_yticks(range(len(mat_2D)))
+    if xtick_lab:
+        ax.set_xticklabels(xtick_lab, fontsize=font_tick)
+    if ytick_lab:
+        ax.set_yticklabels(ytick_lab, fontsize=font_tick)
+
+    cbar=plt.colorbar(img)
+    cbar.set_label(cbar_lab)
+    #for t in cbar.ax.get_yticklabels():
+        #t.set_fontsize(5)
+    #plot lines defining different target boundaries 
+    
+    plt.savefig(outfile, dpi=300)
     plt.close('all')

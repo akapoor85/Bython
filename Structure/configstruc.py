@@ -1,5 +1,18 @@
 #!/usr/bin/env python
+import os
 
+def Chi_dict(chi_file):
+    '''
+    Reads a file with information about chi dihedrals for each residue and returns the corresponding dict.
+    '''
+    res_chi={}
+    for line in chi_file:
+        if line.strip(): #skip blank lines
+            line = line.strip().split('\t')
+            if not res_chi.has_key(line[0].upper()):
+                res_chi[line[0].upper()] = [entry.upper().split('-') for entry in line[1:]]
+    return res_chi            
+         
 Struc_in_formats = ('pdb') #Recognized Structure File Types by Structure sub-package; MUST be in lowercase
 #Recognized Molecule Types; MUST be in lowercase
 Mol_types = {'protein': ('ala', 'arg', 'asn', 'asp', 'cys', 'glu',
@@ -24,3 +37,12 @@ PROTEIN_AROMATIC_RES = ('his', 'hid', 'hie', 'hsd', 'trp', 'tyr', 'phe')
 #List of protein charged residues
 PROTEIN_POSITIVE = ('arg', 'lys', 'hid', 'hie', 'hsd', 'his')
 PROTEIN_NEGATIVE = ('asp', 'glu')
+
+#Dictionary of Chi dihedrals for every protein residue
+file_res_chi_charmm = open(os.path.join(os.path.dirname(__file__),'residue_chi_charmm'), 'r')
+headerline = file_res_chi_charmm.readline()
+RESIDUE_CHI_CHARMM = Chi_dict(file_res_chi_charmm)
+
+
+        
+

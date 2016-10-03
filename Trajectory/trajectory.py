@@ -225,7 +225,7 @@ class Trajectory:
                     rmsd_mat[frame_index]= trajutils.RMSD(full_traj, full_traj[frame_index], rmsd_index)*rmsd_unit_factor
         e_time = time.clock()
         print "RMSD Matrix Calculation Finished! \nTotal time spent: \n\t%0.2f seconds process time\
-        \n\tOn average, %0.2f seconds per trajectory frame" % (e_time-s_time, (e_time-s_time)/numpy.array(final_sift).shape[0])
+        \n\tOn average, %0.2f seconds per trajectory frame" % (e_time-s_time, (e_time-s_time)/full_traj.n_frames)
         self.rmsd_matrix = rmsd_mat
     
     def Cluster_Trajectory(self, eps=None, min_samples=None, use_algo='DBSCAN', metric='precomputed', use_dist='rmsd'):
@@ -238,6 +238,17 @@ class Trajectory:
             assert use_algo.upper() in valid_algo and use_dist.lower() in valid_dist
         except AssertionError:
             raise ValueError('Valid values for parameters\nuse_algo: %s\nuse_dist: %s' % (', '.join(valid_algo), ', '.join(valid_dist)))
+        
+        if use_dist.lower() == 'rmsd':
+            distance_mat = self.rmsd_matrix
+        elif use_dist.lower() == 'tanimoto':
+            distance_mat = self.tanimoto_dissimilarity_matrix
+        
+        self.traj_cluster_labels = trajutils.Cluster_Traj(distance_mat=distance_mat, eps=eps,
+                                                          min_samples=min_samples, metric= metric,
+                                                          use_algo=use_algo)
+        
+        """
         if use_algo.upper() == 'DBSCAN':
             if use_dist.lower() == 'rmsd':
                 self.traj_cluster_labels = trajutils.Cluster_DBSCAN(distance_mat=self.rmsd_matrix, eps=eps,
@@ -245,7 +256,15 @@ class Trajectory:
             elif use_dist.lower() == 'tanimoto':
                 self.traj_cluster_labels = trajutils.Cluster_DBSCAN(distance_mat=self.tanimoto_dissimilarity_matrix, eps=eps,
                                                                     min_samples=min_samples, metric= metric)
-                
+        if use_algo.upper() == 'KMEANS':
+            if use_dist.lower() == 'rmsd':
+                self.traj_cluster_labels = trajutils.Cluster_DBSCAN(distance_mat=self.rmsd_matrix, eps=eps,
+                                                                    min_samples=min_samples, metric= metric)
+            elif use_dist.lower() == 'tanimoto':
+                self.traj_cluster_labels = trajutils.Cluster_DBSCAN(distance_mat=self.tanimoto_dissimilarity_matrix, eps=eps,
+
+                                                                    min_samples=min_samples, metric= metric)
+        """        
     def Characterize_Clusters(self, align_index=None,rmsd_index=None,save_nFrames=100, beta=1.0,rmsd_unit_factor=10,save_format='xtc',save_path=None):
         '''
         Processes each cluster, prints out cluster information, computes centroid conformation for each cluster and 
