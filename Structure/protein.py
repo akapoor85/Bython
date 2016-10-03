@@ -49,6 +49,13 @@ class Protein(Molecule, Atom):
         except AssertionError:
             raise ValueError('*** Unrecognized atom_names parameter value %s *** \nValid inputs for atom_names: %s' % (atom_names, ','.join(VALID_FF)))
         
+        resname = self.residue[resid]['name']
+        try:
+            assert(resname.upper() not in ['GLY', 'ALA'])
+        except AssertionError:
+            print "WARNING: No Chi dihedral for input resid %d (%s). Returning empty dict." % (resid, resname)
+            return {}
+                   
         #Built atom_name -> atom_index map for the given residue
         atom_map = {self.residue[resid]['atoms'][atmidx]['name'] : atmidx for atmidx in self.residue[resid]['atoms']}
         
