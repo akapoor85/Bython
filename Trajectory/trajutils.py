@@ -3,7 +3,7 @@
 from __future__ import division
 import numpy
 import os
-from sklearn.cluster import DBSCAN, KMeans
+from sklearn.cluster import DBSCAN, AgglomerativeClustering
 
 def RMSD(traj, ref, idx):
     '''
@@ -12,7 +12,8 @@ def RMSD(traj, ref, idx):
     '''
     return numpy.sqrt(numpy.sum(numpy.square(traj.xyz[:,idx,:] - ref.xyz[:,idx,:]),axis=(1, 2))/len(idx))
 
-def Cluster_Traj(distance_mat=None, eps=None, min_samples=None, metric= 'precomputed', use_algo='DBSCAN' ):
+def Cluster_Traj(distance_mat=None, eps=None, min_samples=None, metric= 'precomputed', use_algo='DBSCAN',
+                 n_clusters=2, linkage='average' ):
     '''
     Clustering of input Distance matrix, for ex., RMSD_Matrix
     '''
@@ -22,6 +23,8 @@ def Cluster_Traj(distance_mat=None, eps=None, min_samples=None, metric= 'precomp
         except AssertionError:
             raise ValueError('DBSCAN parameters eps and min_samples cannot be None.')
         cluster_estimator = DBSCAN(eps=eps, min_samples=min_samples, metric=metric).fit(distance_mat)
+    elif use_algo.lower() == 'hierarchical':
+        cluster_estimator = AgglomerativeClustering(n_clusters=n_clusters, linkage=linkage, affinity=metric).fit(distance_mat)
     
     cluster_labels = cluster_estimator.labels_
     return cluster_labels
@@ -107,18 +110,29 @@ def cmdscale(distance_matrix):
 
 def tanimoto_dissimilarity(fingerprint_matrix, relative=None):
     '''
-    Borrowed from Davide's HREX analysis code. 
+    Borrowed from Davide's HREX analysis code, modified a bit to cover the case
+    of all 0 fingerprints. Tanimoto distance between two fingerprints with all 0 bits
+    is set to 0. 
     '''
-    eps_regularize = 1e-5
-    ab= numpy.dot(fingerprint_matrix, fingerprint_matrix.T)
     featuresum= numpy.sum(fingerprint_matrix, axis=1)
+    #Check if any of the fingerprint is all zeros, and set varibales accordingly
+    if not numpy.count_nonzero(featuresum) == featuresum.shape[0]: #Evaluates to True if there is a fingerprint with all 0 bits
+        eps_regularize = 0 
+        add_one = 1
+    else:
+        eps_regularize = 1e-5 
+        add_one = 0
+    
+    ab= numpy.dot(fingerprint_matrix, fingerprint_matrix.T)
     a=numpy.repeat([featuresum],len(featuresum),axis=0)
     b=a.T
-    r=1-ab/(a+b-ab+eps_regularize)
+    r=1-(ab+add_one)/(a+b+add_one-ab+eps_regularize)
     if relative:
         s=r/(1-r+relative)
     else:
         s=r
+    if eps_regularize:
+        numpy.fill_diagonal(s, 0.0)
     return s        
     
     

@@ -11,15 +11,18 @@ SUPPORT
 
 RECENT UPDATES
 	October 2016
-		Added sidechain chi dihedral calculation in Structure
-		Added classical MDS and 2D plots in trajectory figures
+		Added 9-bit/residue SIFT calculation on trajectory for any number of ligands; last 2 bits are for one-water and two-water mediated hydrogen bonds.
+		Modified plotSIFT to plot SIFT figures.
+		Added function to calculate RMSF over trajectory.
 
 PREVIOUS UPDATES
+	Added sidechain chi dihedral calculation in Structure
+	Added classical MDS and 2D plots in trajectory figures
 	Added trajectory RMSD matrix calculation, clustering and analysis methods
 	Added functions to plot fractional SIFT over trajectory.
 	Added Get_Index in trajectory (partially complete).
 	Updated Tutorial in Docs
-	Added 7-bit/res SIFT calculation on trajectory for any number of ligands
+	Added 7-bit/residue SIFT calculation on trajectory for any number of ligands
 	Added Trajectory sub-package
 	Updated Readmol in Cheminfo
 	Added 2D Fingerprints in Cheminfo

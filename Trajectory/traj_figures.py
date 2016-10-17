@@ -5,11 +5,12 @@ import pandas
 import numpy
 import os, sys
 import trajutils
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 #Now add the following code in case plotting is done on remote servers to avoid backend x-server related issue
 plt.switch_backend('agg')
 
-def plotSIFT(avg_sift=None, residue_labels=None,
+def plotSIFT(avg_sift=None, residue_labels=None, bit_res=7,
              sift_types = ['Apolar','Aro_F2F','Aro_E2F','Hbond_ProD','Hbond_ProA','Elec_ProP','Elec_ProN'],
              color_list = ['r','b','g','y','c','m','k'], filename='AVG_SIFT_BAR.png'):
     '''Bar plot of Avg. contacts coming from SIFT calculation'''
@@ -19,11 +20,13 @@ def plotSIFT(avg_sift=None, residue_labels=None,
     #NOTE: ENTRIES in sift_types MUST BE IN SAME ORDER AS ORIGINAL SIFT BITS
     #Values are list of residue names (Ex: Met124), and avg. bits for each sift type for corresponding residue
     sift_data = {}
-    bit_length = len(sift_types)
-    for index in xrange(0, len(avg_sift),bit_length):
+    if bit_res == 9 and len(sift_types) == 7:
+        sift_types.extend(['Hbond_1Wat', 'Hbond_2Wat'])
+        color_list.extend(['orange','saddlebrown'])
+    for index in xrange(0, len(avg_sift),bit_res):
         res_name = residue_labels[index].split('_')[0]
         #If residue has non-zero contacts; make a dataset entry
-        if numpy.sum(avg_sift[index:index+bit_length]):# and res_name[0:3].upper() != 'GLY':
+        if numpy.sum(avg_sift[index:index+bit_res]):# and res_name[0:3].upper() != 'GLY':
             if not sift_data.has_key('Residue_Name'):
                 sift_data['Residue_Name'] = [res_name]
             else:
@@ -37,6 +40,7 @@ def plotSIFT(avg_sift=None, residue_labels=None,
         
     # Create the general plot and the "subplots" i.e. the bars
     fontS=18
+    plt.hold(True)
     f, ax1 = plt.subplots(1, figsize=(18,8))
     f.subplots_adjust(bottom=0.2)
     # Set the bar width
@@ -55,12 +59,15 @@ def plotSIFT(avg_sift=None, residue_labels=None,
             ax1.bar(bar_l, df[sift_cat], width=bar_width, label=sift_cat, alpha=0.5, color=use_col, bottom = bottom, edgecolor=use_col)
             bottom = bottom + df[sift_cat]
     # set the x ticks with names
+    for y_val in range(1,bit_res+1):
+        plt.plot(tick_pos, [y_val]*len(tick_pos), 'k--', alpha=0.2)
     plt.xticks(tick_pos, df['Residue_Name'], rotation="vertical", fontsize=fontS)
     # Set the label and legends
     ax1.set_ylabel("Contact Fraction", fontsize=fontS)
-    plt.yticks([0,0.5,1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0], fontsize=fontS)
+    plt.yticks(numpy.linspace(0, bit_res, bit_res*2 + 1), fontsize=fontS)
+    #plt.yticks([0,0.5,1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0], fontsize=fontS)
     ax1.set_xlabel("Residues", fontsize=fontS)
-    plt.legend(loc='upper left')
+    plt.legend(loc='upper left', bbox_to_anchor=(0.0, 1.0), ncol=int(bit_res/2.)+1, fontsize='large', frameon=False)
     # Set a buffer around the edge
     plt.xlim([min(tick_pos)-(bar_width/2), max(tick_pos)+(bar_width/2)])
     # Save fig
@@ -100,7 +107,7 @@ def plot_2D(mat_2D=None, outfile='Plot_2D.png', f_size=(4.0,4.0), vmin=None, vma
         vmin = numpy.amin(mat_2D)
     if vmax == None:
         vmax = numpy.amax(mat_2D)
-        
+            
     f1=plt.figure(figsize=f_size)
     #f1.subplots_adjust(left=0.18,bottom=0.15)
     ax = plt.gca()
@@ -109,10 +116,10 @@ def plot_2D(mat_2D=None, outfile='Plot_2D.png', f_size=(4.0,4.0), vmin=None, vma
     #bounds=[0.0,0.2,0.4,0.5,0.6,0.7,0.8,0.9,1.0]
     #norm = colors.BoundaryNorm(bounds, cmap.N)
 
-    img= plt.imshow(mat_2D,interpolation=interpolation,origin='lower', vmin=vmin,vmax=vmax, cmap=cmap)
-    plt.xlabel(xlab, fontsize = font_lab)
-    plt.ylabel(ylab, fontsize = font_lab)
-    #ax.set_xticks(range(len(mat_2D)))
+    img= plt.imshow(mat_2D,interpolation=interpolation,origin='lower', vmin=vmin,vmax=vmax, cmap=cmap, aspect='auto')
+    #plt.xlabel(xlab, fontsize = font_lab)
+    #plt.ylabel(ylab, fontsize = font_lab)
+    #ax.set_xticks(range(mat_2D.shape[1]))
     #ax.set_yticks(range(len(mat_2D)))
     if xtick_lab:
         ax.set_xticklabels(xtick_lab, fontsize=font_tick)
@@ -127,3 +134,45 @@ def plot_2D(mat_2D=None, outfile='Plot_2D.png', f_size=(4.0,4.0), vmin=None, vma
     
     plt.savefig(outfile, dpi=300)
     plt.close('all')
+    
+def plot_Scatter(xval=None, yval=None,color='b', size=20,outfile='Plot_Scatter.png', f_size=(4.0,4.0), xlab='', ylab='', cbar_lab='',
+                 font_lab= 10.0, font_tick=6.0, xtick_lab=[], ytick_lab=[], cmap='jet', edgecolors='none', alpha=0.5,
+                 xticks=[], yticks=[], col_bar='', norm=None):
+    f1=plt.figure(figsize=f_size)
+    #f1.subplots_adjust(left=0.18,bottom=0.15)
+    ax = plt.gca()
+    #Settings for discrete colorbar
+    if col_bar.lower() == 'discrete':
+        # define the colormap
+        cmap = eval('plt.cm.'+cmap)
+        # define the bins and normalize
+        bounds = numpy.unique(color)
+        bounds = numpy.append(bounds, numpy.amax(bounds)+1)
+        norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+        
+    img= plt.scatter(xval,yval,c=color,s=size,alpha=alpha,cmap=cmap,edgecolors=edgecolors, norm=norm)
+    plt.xlabel(xlab, fontsize = font_lab)
+    plt.ylabel(ylab, fontsize = font_lab)
+    if xticks:
+        plt.xticks(xticks, fontsize=font_tick)
+    else:
+        plt.xticks(fontsize=font_tick)
+    if yticks:
+        plt.yticks(yticks, fontsize=font_tick)
+    else:
+        plt.yticks(fontsize=font_tick)
+    #ax.set_yticks(range(len(mat_2D)))
+    #if xtick_lab:
+    #    ax.set_xticklabels(xtick_lab, fontsize=font_tick)
+    #if ytick_lab:
+    #    ax.set_yticklabels(ytick_lab, fontsize=font_tick)
+    if isinstance(color, list) or isinstance(color, numpy.ndarray):
+        cbar=plt.colorbar(img)
+        cbar.set_label(cbar_lab)
+    #for t in cbar.ax.get_yticklabels():
+        #t.set_fontsize(5)
+    #plot lines defining different target boundaries 
+    
+    plt.savefig(outfile, dpi=300)
+    plt.close('all')
+

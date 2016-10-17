@@ -53,7 +53,7 @@ class Molecule:
         try:
             coordinates = [self.residue[key]['atoms'][atmidx]['cord'] for key in resid for atmidx in sorted(self.residue[key]['atoms'])]
         except KeyError:
-            sys.exit("*** INVALID INPUT ***. \nInput residue id out of range")
+            raise KeyError("*** INVALID INPUT ***. \nInput residue id out of range")
         return numpy.array(coordinates)
     
     def GetCordbyIdx(self, atmidx= None):

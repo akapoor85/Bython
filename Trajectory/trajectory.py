@@ -138,17 +138,19 @@ class Trajectory:
                 elif atom_criteria.lower()[0:4] == 'resn':
                     if atom_object.residue.name.lower() in select and atom_object.element.symbol != 'H':
                         selected_atom_indices.append(atom_object.index)
-        return selected_atom_indices
-                
+        return selected_atom_indices                
                     
-    def SIFT(self, lig_top=None, res_index=None, bit_res=7, aro_cut=4.0, apolar_cut=4.5, hbond_cut=3.5,elec_cut=4.0,verbose=True, sc_only=False):
+    def SIFT(self, lig_top=None, res_index=None, bit_res=7, aro_cut=4.0, apolar_cut=4.5,
+             hbond_cut=3.5,elec_cut=4.0,verbose=True, sc_only=False, ligand_neighb_dist=None):
         '''
         Ligand-protein Structural Interaction Fingerprint calculation.
-        Fingerprint can be calculated for any number of ligands together. Currently supports 7-bit resolution per protein residue.
+        Fingerprint can be calculated for any number of ligands together. Currently supports 7-bit and 9-bit resolution per protein residue.
         SIFT can be calculated with all residues (or specific residues) and all-atoms (or just the protein sidechain) for the
         entire trajectory.
         For SIFT caluclation, topology must be read using .pdb format as MDTraj doesn't provide bonds information for .gro file
-        res_index: Is a 0-based index i.e. res_index = Residue id-1        
+        res_index: Is a 0-based index i.e. res_index = Residue id-1
+        ligand_neighb_dist: Residues within 'ligand_neighb_dist' Ang of ligand polar atoms will be used for water-mediated hydrogen bond determination
+                       (default: (3*hbond_cut+0.05) Ang)
         Returns->
                 final_sift: NxM array of fingerprints whre N=Number of trajecotry frames and M=bit_resolution*Number_of_residues*Number_of_ligands
                 residue_labels: 1xM list containing labels corresponding to each fingeprint
@@ -159,6 +161,8 @@ class Trajectory:
         #Reload Trajectory in case user already worked with few/all chunks, also work with each frame at a time
         self.Reload(newchunk=1)
         loop_count = 0
+        if ligand_neighb_dist == None:
+            ligand_neighb_dist = 3*hbond_cut + 0.05
         if verbose:
             print ("Structural Interaction fingerprint calculation for %s trajectory with %s ligand(s) (%s)" %
                    (self.name, str(len(self.small_mols)), ', '.join(self.small_mols)))
@@ -171,22 +175,33 @@ class Trajectory:
                 partial_sift, protein_resindex = sift.SIFT_7bit(traj_ob=partial_traj, lig_top=lig_top, res_index=res_index, aro_cut=aro_cut,
                                                    apolar_cut=apolar_cut, hbond_cut=hbond_cut,
                                                    elec_cut=elec_cut,verbose=verbose, use_sc_only=sc_only)
-                final_sift.append(partial_sift)
-                loop_count+=1
-        #print numpy.array(final_sift).shape
+            elif bit_res == 9:
+                partial_sift, protein_resindex = sift.SIFT_9bit(traj_ob=partial_traj, lig_top=lig_top, res_index=res_index, aro_cut=aro_cut,
+                                                   apolar_cut=apolar_cut, hbond_cut=hbond_cut,
+                                                   elec_cut=elec_cut,verbose=verbose, use_sc_only=sc_only, ligand_neighb_dist=ligand_neighb_dist)
+            
+            final_sift.append(partial_sift)
+            loop_count+=1
+                      
         e_time = time.clock()
         print "SIFT Calculation Finished! \nTotal time spent: \n\t%0.2f seconds process time\
         \n\tOn average, %0.2f seconds per trajectory frame" % (e_time-s_time, (e_time-s_time)/numpy.array(final_sift).shape[0])
         #Prepare protein residue labels
         residue_name_num = [partial_traj.topology.residue(residue_index) for residue_index in protein_resindex]
         residue_labels = []
+        
         for each_res in residue_name_num:
             if sc_only and str(each_res)[0:3].upper() == 'GLY':
                 continue
-            for sift_type in ['Apolar', 'Aro_F2F', 'Aro_E2F', 'Hbond_ProD', 'Hbond_ProA', 'Elec_ProP', 'Elec_ProN']:
-                residue_labels.append(str(each_res)+'_'+sift_type)
+            elif bit_res==7:
+                for sift_type in ['Apolar', 'Aro_F2F', 'Aro_E2F', 'Hbond_ProD', 'Hbond_ProA', 'Elec_ProP', 'Elec_ProN']:
+                    residue_labels.append(str(each_res)+'_'+sift_type)
+            elif bit_res==9:
+                for sift_type in ['Apolar', 'Aro_F2F', 'Aro_E2F', 'Hbond_ProD', 'Hbond_ProA', 'Elec_ProP', 'Elec_ProN', 'Hbond_1Wat', 'Hbond_2Wat']:
+                    residue_labels.append(str(each_res)+'_'+sift_type)
         #Calculate Tanimoto dissimilarity matrix
         self.tanimoto_dissimilarity_matrix = trajutils.tanimoto_dissimilarity(numpy.array(final_sift))
+        
         return numpy.array(final_sift), residue_labels, numpy.mean(numpy.array(final_sift), axis=0)
     
     def RMSD_Matrix(self, align_index=None, rmsd_index=None, ref_frame=None, rmsd_unit_factor=10):
@@ -228,12 +243,13 @@ class Trajectory:
         \n\tOn average, %0.2f seconds per trajectory frame" % (e_time-s_time, (e_time-s_time)/full_traj.n_frames)
         self.rmsd_matrix = rmsd_mat
     
-    def Cluster_Trajectory(self, eps=None, min_samples=None, use_algo='DBSCAN', metric='precomputed', use_dist='rmsd'):
+    def Cluster_Trajectory(self, eps=None, min_samples=None, use_algo='DBSCAN', metric='precomputed',
+                           use_dist='rmsd', n_clusters=2, linkage='average', custom_dist=None):
         '''
         Clusters trajectory using input algorithm (currently only DBSCAN) and input distance matrix format (rmsd or tanimoto)
         '''
-        valid_algo = ['DBSCAN']
-        valid_dist = ['rmsd', 'tanimoto']
+        valid_algo = ['DBSCAN', 'HIERARCHICAL']
+        valid_dist = ['rmsd', 'tanimoto', 'custom']
         try:
             assert use_algo.upper() in valid_algo and use_dist.lower() in valid_dist
         except AssertionError:
@@ -243,28 +259,14 @@ class Trajectory:
             distance_mat = self.rmsd_matrix
         elif use_dist.lower() == 'tanimoto':
             distance_mat = self.tanimoto_dissimilarity_matrix
+        elif use_dist.lower() == 'custom':
+            distance_mat = custom_dist
         
         self.traj_cluster_labels = trajutils.Cluster_Traj(distance_mat=distance_mat, eps=eps,
                                                           min_samples=min_samples, metric= metric,
-                                                          use_algo=use_algo)
+                                                          use_algo=use_algo, n_clusters=n_clusters, linkage=linkage)
         
-        """
-        if use_algo.upper() == 'DBSCAN':
-            if use_dist.lower() == 'rmsd':
-                self.traj_cluster_labels = trajutils.Cluster_DBSCAN(distance_mat=self.rmsd_matrix, eps=eps,
-                                                                    min_samples=min_samples, metric= metric)
-            elif use_dist.lower() == 'tanimoto':
-                self.traj_cluster_labels = trajutils.Cluster_DBSCAN(distance_mat=self.tanimoto_dissimilarity_matrix, eps=eps,
-                                                                    min_samples=min_samples, metric= metric)
-        if use_algo.upper() == 'KMEANS':
-            if use_dist.lower() == 'rmsd':
-                self.traj_cluster_labels = trajutils.Cluster_DBSCAN(distance_mat=self.rmsd_matrix, eps=eps,
-                                                                    min_samples=min_samples, metric= metric)
-            elif use_dist.lower() == 'tanimoto':
-                self.traj_cluster_labels = trajutils.Cluster_DBSCAN(distance_mat=self.tanimoto_dissimilarity_matrix, eps=eps,
-
-                                                                    min_samples=min_samples, metric= metric)
-        """        
+                
     def Characterize_Clusters(self, align_index=None,rmsd_index=None,save_nFrames=100, beta=1.0,rmsd_unit_factor=10,save_format='xtc',save_path=None):
         '''
         Processes each cluster, prints out cluster information, computes centroid conformation for each cluster and 
@@ -289,6 +291,70 @@ class Trajectory:
             trajutils.Process_Clusters(full_traj, self.traj_cluster_labels, align_index=align_index,
                                        rmsd_index=rmsd_index, save_nFrames=save_nFrames, beta=beta,
                                        rmsd_unit_factor=rmsd_unit_factor, save_format=save_format, save_path=save_path)
+            
+    def Get_Distance(self, atom_pairs, periodic=True, newchunk=100, unitfactor=10):
+        '''
+        Uses MDTraj compute_distances to compute the distances between pairs of atoms in each frame.
+        Input: atom_pairs-> An array of shape (num_pairs,2) with each row giving indices of two atoms to compute distnaces for.
+               periodic-> If periodic is True and the trajectory contains unitcell information, compute distances under
+               the minimum image convention. Default distance units for MDtraj is in nm. Results are returned in Angstrom.  
+        Returns: an array of shape (num_frames, num_pairs) with the distances, in each frame, between each pair of atoms.
+        '''
+        dist_pairs = numpy.empty((0, numpy.shape(atom_pairs)[0])) #Return array
+        #Reload Trajectory in case user already worked with few/all chunks, working with newchunk frames at a time
+        self.Reload(newchunk=newchunk)
+        
+        s_time = time.clock()
+        for partial_traj in self.traj_iter:
+            partial_dist = md.compute_distances(partial_traj, atom_pairs)
+            dist_pairs = numpy.vstack((dist_pairs,partial_dist))
+        e_time = time.clock()
+        print "Distance Calculation Finished! \nTotal time spent: \n\t%0.2f seconds process time\
+        \n\tOn average, %0.4f seconds per trajectory frame" % (e_time-s_time, (e_time-s_time)/numpy.array(dist_pairs).shape[0])
+        
+        return numpy.array(dist_pairs)*unitfactor
+            
+    def RMSF(self, align_index=None, rmsf_index=None, ref_frame=None, rmsd_unit_factor=10):
+        '''
+        Returns an array of shape (rmsf_index,) containing root mean square fluctuation (in Angstrom) of each atom
+        in rmsf_index. By default, average structure is used as reference. Trajectory frame index specified by ref_frame
+        is used instead when ref_frame is not None.
+        !!Note: Superpose function will modify the original coordinates in traj.
+        To prevent this, pass a deepcopy image of the object.!! 
+        Input: align_index-> list of atom indices used in structure alignment (0-based).
+               rmsf_index-> list of atom indices used for calculating rmsf (0-based).
+                            If not specified, align_index will be used to compute rmsf
+               ref_frame-> Specific reference frame index to use. Frames number from 0 to N-1.
+               rmsd_unit_factor: Default unit in mdtraj is nanometers, here RMSD is returned in Angstrom.
+        '''
+        try:
+            assert align_index != None
+        except AssertionError:
+            raise ValueError('align_index cannot be None')
+        #If rmsf_index not defined, assign align_index to rmsf_index
+        if rmsf_index == None:
+            rmsf_index = align_index
+        #Reload Trajectory in case user already worked with few/all chunks, also work with entire trajectory at a time
+        self.Reload(newchunk=0)
+        s_time = time.clock()
+        
+        for full_traj in self.traj_iter: #This loop runs only once
+            #Align trajecotry on frame 0; rmsf calculation is independent of which frame traj is aligned to.
+            full_traj.superpose(full_traj[0],  atom_indices=align_index)
+            #If reference frame specified, then return RMSF with the reference frame.
+            if ref_frame != None:
+                ref_pos = full_traj.xyz[ref_frame,rmsf_index,:]
+            else:
+                #Compute average structure as reference frame
+                ref_pos = full_traj.xyz[:,rmsf_index,:].mean(0)
+            #Compute RMSF
+            diff = full_traj.xyz[:,rmsf_index,:] - ref_pos
+            root_mean_sq_diff = (((diff**2).sum(2)).mean(0))**0.5         
+            
+        e_time = time.clock()
+        print "RMSF Calculation Finished! \nTotal time spent: \n\t%0.2f seconds process time\
+        \n\tOn average, %0.2f seconds per trajectory frame" % (e_time-s_time, (e_time-s_time)/full_traj.n_frames)
+        return root_mean_sq_diff*rmsd_unit_factor    
         
             
         

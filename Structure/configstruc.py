@@ -33,10 +33,12 @@ NON_POLAR_ATOMS = ('c')
 POLAR_ATOMS = ('n', 'o', 's')
 
 #List of protein aromatic residues
-PROTEIN_AROMATIC_RES = ('his', 'hid', 'hie', 'hsd', 'trp', 'tyr', 'phe')
+PROTEIN_AROMATIC_RES = ('his', 'hid', 'hie', 'hip', 'hsd', 'hse', 'hsp', 'trp', 'tyr', 'phe')
 #List of protein charged residues
-PROTEIN_POSITIVE = ('arg', 'lys', 'hid', 'hie', 'hsd', 'his')
+PROTEIN_POSITIVE = ('arg', 'lys', 'hip', 'hsp')
 PROTEIN_NEGATIVE = ('asp', 'glu')
+#List of protein residues with sidechain containing polar atoms (not charged atoms except his since it's a bit ambiguous)
+PROTEIN_POLAR_SC = ('ser', 'thr', 'cys', 'asn', 'gln', 'tyr', 'trp', 'his', 'hid', 'hie', 'hip', 'hsd', 'hse', 'hsp')
 
 #Dictionary of Chi dihedrals for every protein residue
 file_res_chi_charmm = open(os.path.join(os.path.dirname(__file__),'residue_chi_charmm'), 'r')
