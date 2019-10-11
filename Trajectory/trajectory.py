@@ -6,6 +6,7 @@ import os.path, sys
 import numpy
 import time
 import sift
+import sift_pro_pro
 import trajutils
 from Bython.Structure.configstruc import Mol_types
 
@@ -75,16 +76,19 @@ class Trajectory:
         self.atom_indices = atom_indices
         self.skip = skip
         
-    def Reload(self, newchunk=None):
+    def Reload(self, newchunk=None, newskip=0, newstride=1):
         '''
         Reload the empty traj_iter instance variable to the saved read state.
         '''
         if newchunk != None:
-            self.traj_iter = md.iterload(filename=self.filename, chunk=newchunk, top=self.topfile,
-                                         stride=self.stride, atom_indices=self.atom_indices, skip=self.skip)
-        else:
-            self.traj_iter = md.iterload(filename=self.filename, chunk=self.chunk, top=self.topfile,
-                                         stride=self.stride, atom_indices=self.atom_indices, skip=self.skip)
+            self.chunk = newchunk
+        if newskip != 0:
+            self.skip = newskip
+        if newstride !=1:
+            self.stride = newstride
+        
+        self.traj_iter = md.iterload(filename=self.filename, chunk=self.chunk, top=self.topfile,
+                                     stride=self.stride, atom_indices=self.atom_indices, skip=self.skip)
         
     def Sense_SmallMol(self):
         '''
@@ -141,9 +145,79 @@ class Trajectory:
         return selected_atom_indices                
                     
     def SIFT(self, lig_top=None, res_index=None, bit_res=7, aro_cut=4.0, apolar_cut=4.5,
-             hbond_cut=3.5,elec_cut=4.0,verbose=True, sc_only=False, ligand_neighb_dist=None):
+             hbond_cut=3.5,elec_cut=4.0,verbose=True, sc_only=False, ligand_neighb_dist=None, res_index_include_all=[], add_bonds=[]):
         '''
         Ligand-protein Structural Interaction Fingerprint calculation.
+        Fingerprint can be calculated for any number of ligands together. Currently supports 7-bit and 9-bit resolution per protein residue.
+        SIFT can be calculated with all residues (or specific residues) and all-atoms (or just the protein sidechain) for the
+        entire trajectory.
+        For SIFT caluclation, topology must be read using .pdb format as MDTraj doesn't provide bonds information for .gro file
+        res_index: Is a 0-based index i.e. res_index = Residue id-1
+        ligand_neighb_dist: Residues within 'ligand_neighb_dist' Ang of ligand polar atoms will be used for water-mediated hydrogen bond determination
+                       (default: (3*hbond_cut+0.05) Ang)
+	res_index_include_all: For these residue indexes include both sidechain and backbone atoms even if sc_only is True. 
+        Returns->
+                final_sift: NxM array of fingerprints whre N=Number of trajecotry frames and M=bit_resolution*Number_of_residues*Number_of_ligands
+                residue_labels: 1xM list containing labels corresponding to each fingeprint
+                average_fpt: 1xM array of average fingerprint over entire trajectory.
+                Additionally calculates tanimoto dissimilarity matrix and sets the class instance variable tanimoto_dissimilarity_matrix
+        '''
+        final_sift = [] #Final fingerprint for entire trajectory
+        #Reload Trajectory in case user already worked with few/all chunks, also work with each frame at a time
+        self.Reload(newchunk=1)
+        loop_count = 0
+        if ligand_neighb_dist == None:
+            ligand_neighb_dist = 3*hbond_cut + 0.05
+        if verbose:
+            print ("Structural Interaction fingerprint calculation for %s trajectory with %s ligand(s) (%s)" %
+                   (self.name, str(len(self.small_mols)), ', '.join(self.small_mols)))
+        s_time = time.clock()
+        
+	for partial_traj in self.traj_iter:
+	    #Add bonds to topology if needed
+	    if len(add_bonds):
+		self.Add_Bonds_to_Topology(add_bonds, mdtraj_object=partial_traj)
+
+            if loop_count:
+                verbose=False
+            #Call to appropriate bit function
+            if bit_res == 7:
+                partial_sift, protein_resindex = sift.SIFT_7bit(traj_ob=partial_traj, lig_top=lig_top, res_index=res_index, aro_cut=aro_cut,
+                                                   apolar_cut=apolar_cut, hbond_cut=hbond_cut,
+                                                   elec_cut=elec_cut,verbose=verbose, use_sc_only=sc_only, res_index_include_all=res_index_include_all)
+            elif bit_res == 9:
+                partial_sift, protein_resindex = sift.SIFT_9bit(traj_ob=partial_traj, lig_top=lig_top, res_index=res_index, aro_cut=aro_cut,
+                                                   apolar_cut=apolar_cut, hbond_cut=hbond_cut,
+                                                   elec_cut=elec_cut,verbose=verbose, use_sc_only=sc_only, ligand_neighb_dist=ligand_neighb_dist, res_index_include_all=res_index_include_all)
+            
+            final_sift.append(partial_sift)
+            loop_count+=1
+                      
+        e_time = time.clock()
+        print "SIFT Calculation Finished! \nTotal time spent: \n\t%0.2f seconds process time\
+        \n\tOn average, %0.2f seconds per trajectory frame" % (e_time-s_time, (e_time-s_time)/numpy.array(final_sift).shape[0])
+        #Prepare protein residue labels
+        residue_name_num = [partial_traj.topology.residue(residue_index) for residue_index in protein_resindex]
+        residue_labels = []
+        
+        for each_res in residue_name_num:
+            if sc_only and str(each_res)[0:3].upper() == 'GLY' and not each_res.index in res_index_include_all:
+                continue
+            elif bit_res==7:
+                for sift_type in ['Apolar', 'Aro_F2F', 'Aro_E2F', 'Hbond_ProD', 'Hbond_ProA', 'Elec_ProP', 'Elec_ProN']:
+                    residue_labels.append(str(each_res)+'_'+sift_type)
+            elif bit_res==9:
+                for sift_type in ['Apolar', 'Aro_F2F', 'Aro_E2F', 'Hbond_ProD', 'Hbond_ProA', 'Elec_ProP', 'Elec_ProN', 'Hbond_1Wat', 'Hbond_2Wat']:
+                    residue_labels.append(str(each_res)+'_'+sift_type)
+        #Calculate Tanimoto dissimilarity matrix
+        self.tanimoto_dissimilarity_matrix = trajutils.tanimoto_dissimilarity(numpy.array(final_sift))
+        
+        return numpy.array(final_sift), residue_labels, numpy.mean(numpy.array(final_sift), axis=0)
+    
+    def SIFT_PROPRO(self, res_index=None, res_index2=None, bit_res=7, aro_cut=4.0, apolar_cut=4.5,
+             hbond_cut=3.5,elec_cut=4.0,verbose=True, sc_only=False):
+        '''
+        protein-protein Structural Interaction Fingerprint calculation.
         Fingerprint can be calculated for any number of ligands together. Currently supports 7-bit and 9-bit resolution per protein residue.
         SIFT can be calculated with all residues (or specific residues) and all-atoms (or just the protein sidechain) for the
         entire trajectory.
@@ -161,22 +235,18 @@ class Trajectory:
         #Reload Trajectory in case user already worked with few/all chunks, also work with each frame at a time
         self.Reload(newchunk=1)
         loop_count = 0
-        if ligand_neighb_dist == None:
-            ligand_neighb_dist = 3*hbond_cut + 0.05
-        if verbose:
-            print ("Structural Interaction fingerprint calculation for %s trajectory with %s ligand(s) (%s)" %
-                   (self.name, str(len(self.small_mols)), ', '.join(self.small_mols)))
+    
         s_time = time.clock()
         for partial_traj in self.traj_iter:
             if loop_count:
                 verbose=False
             #Call to appropriate bit function
             if bit_res == 7:
-                partial_sift, protein_resindex = sift.SIFT_7bit(traj_ob=partial_traj, lig_top=lig_top, res_index=res_index, aro_cut=aro_cut,
+                partial_sift, protein_resindex = sift_pro_pro.SIFT_7bit(traj_ob=partial_traj, res_index2=res_index2, res_index=res_index, aro_cut=aro_cut,
                                                    apolar_cut=apolar_cut, hbond_cut=hbond_cut,
                                                    elec_cut=elec_cut,verbose=verbose, use_sc_only=sc_only)
             elif bit_res == 9:
-                partial_sift, protein_resindex = sift.SIFT_9bit(traj_ob=partial_traj, lig_top=lig_top, res_index=res_index, aro_cut=aro_cut,
+                partial_sift, protein_resindex = sift_pro_pro.SIFT_9bit(traj_ob=partial_traj, lig_top=lig_top, res_index=res_index, aro_cut=aro_cut,
                                                    apolar_cut=apolar_cut, hbond_cut=hbond_cut,
                                                    elec_cut=elec_cut,verbose=verbose, use_sc_only=sc_only, ligand_neighb_dist=ligand_neighb_dist)
             
@@ -204,17 +274,20 @@ class Trajectory:
         
         return numpy.array(final_sift), residue_labels, numpy.mean(numpy.array(final_sift), axis=0)
     
-    def RMSD_Matrix(self, align_index=None, rmsd_index=None, ref_frame=None, rmsd_unit_factor=10):
+    def RMSD_Matrix(self, align_index=None, rmsd_index=None, ref_frame=None, ref_md_ob=None,rmsd_unit_factor=10,pre_aligned=False):
         '''
         Sets the class instance variable rmsd_matrix (NxN array) containing RMSD (in Angstrom) between each of the N trajectory frames.
-        If ref_frame is not none, then a 1xN rmsd array is set with rmsd of all frames w.r.t ref_frame  
+        If ref_frame is not none, then a 1xN rmsd array is set with rmsd of all frames w.r.t ref_frame of trajectory in self or
+        the ref_frame of a mdtraj reference object (if provided as input)  
         !!Note: Superpose function will modify the original coordinates in traj.
         To prevent this, pass a deepcopy image of the object.!! 
         Input: align_index-> list of atom indices used in structure alignment (0-based).
                rmsd_index-> list of atom indices used for calculating rmsd (0-based).
                             If not specified, align_index will be used to compute rmsd
                ref_frame-> Specific reference frame index to use. Frames number from 0 to N-1.
+               ref_md_ob-> Compute rmsd w.r.t ref_frame of trajectory reffered by ref_md_ob
                rmsd_unit_factor: Default unit in mdtraj is nanometers, here RMSD is returned in Angstrom.
+               pre_aligned -> skips superpose step if trajectory was aligned already. Default is to align the trajectory first.
         '''
         try:
             assert align_index != None
@@ -230,13 +303,20 @@ class Trajectory:
         for full_traj in self.traj_iter: #This loop runs only once
             #If reference frame specified, then return RMSD with the reference frame.
             if ref_frame != None:
-                full_traj.superpose(full_traj[ref_frame],  atom_indices = align_index)
-                rmsd_mat = trajutils.RMSD(full_traj, full_traj[ref_frame], rmsd_index)*rmsd_unit_factor
+                if ref_md_ob != None:
+                    if not pre_aligned:
+                        full_traj.superpose(ref_md_ob[ref_frame],  atom_indices = align_index)
+                    rmsd_mat = trajutils.RMSD(full_traj, ref_md_ob[ref_frame], rmsd_index)*rmsd_unit_factor
+                else:
+                    if not pre_aligned:
+                        full_traj.superpose(full_traj[ref_frame],  atom_indices = align_index)
+                    rmsd_mat = trajutils.RMSD(full_traj, full_traj[ref_frame], rmsd_index)*rmsd_unit_factor
             else:
                 #Otherwise compute and return pairwise RMSDs
                 rmsd_mat = numpy.empty((full_traj.n_frames, full_traj.n_frames))
                 for frame_index in range(full_traj.n_frames):
-                    full_traj.superpose(full_traj[frame_index],  atom_indices = align_index)
+                    if not pre_aligned:
+                        full_traj.superpose(full_traj[frame_index],  atom_indices = align_index)
                     rmsd_mat[frame_index]= trajutils.RMSD(full_traj, full_traj[frame_index], rmsd_index)*rmsd_unit_factor
         e_time = time.clock()
         print "RMSD Matrix Calculation Finished! \nTotal time spent: \n\t%0.2f seconds process time\
@@ -287,6 +367,7 @@ class Trajectory:
         self.Reload(newchunk=0)
         if save_path == None:
             save_path = os.path.abspath(os.path.dirname(sys.argv[0]))
+            
         for full_traj in self.traj_iter: #This loop runs only once
             trajutils.Process_Clusters(full_traj, self.traj_cluster_labels, align_index=align_index,
                                        rmsd_index=rmsd_index, save_nFrames=save_nFrames, beta=beta,
@@ -306,7 +387,7 @@ class Trajectory:
         
         s_time = time.clock()
         for partial_traj in self.traj_iter:
-            partial_dist = md.compute_distances(partial_traj, atom_pairs)
+            partial_dist = md.compute_distances(partial_traj, atom_pairs, periodic=periodic)
             dist_pairs = numpy.vstack((dist_pairs,partial_dist))
         e_time = time.clock()
         print "Distance Calculation Finished! \nTotal time spent: \n\t%0.2f seconds process time\
@@ -318,7 +399,7 @@ class Trajectory:
         '''
         Returns an array of shape (rmsf_index,) containing root mean square fluctuation (in Angstrom) of each atom
         in rmsf_index. By default, average structure is used as reference. Trajectory frame index specified by ref_frame
-        is used instead when ref_frame is not None.
+        is used instead when ref_frame is not None. An array containing residue id is also returned. 
         !!Note: Superpose function will modify the original coordinates in traj.
         To prevent this, pass a deepcopy image of the object.!! 
         Input: align_index-> list of atom indices used in structure alignment (0-based).
@@ -336,9 +417,13 @@ class Trajectory:
             rmsf_index = align_index
         #Reload Trajectory in case user already worked with few/all chunks, also work with entire trajectory at a time
         self.Reload(newchunk=0)
+        
         s_time = time.clock()
         
         for full_traj in self.traj_iter: #This loop runs only once
+            #Get the residue id of atoms in rmsf_index
+            print full_traj.n_frames
+            residue_ids = [full_traj.topology.atom(atom_idx).residue.resSeq for atom_idx in rmsf_index]
             #Align trajecotry on frame 0; rmsf calculation is independent of which frame traj is aligned to.
             full_traj.superpose(full_traj[0],  atom_indices=align_index)
             #If reference frame specified, then return RMSF with the reference frame.
@@ -354,7 +439,73 @@ class Trajectory:
         e_time = time.clock()
         print "RMSF Calculation Finished! \nTotal time spent: \n\t%0.2f seconds process time\
         \n\tOn average, %0.2f seconds per trajectory frame" % (e_time-s_time, (e_time-s_time)/full_traj.n_frames)
-        return root_mean_sq_diff*rmsd_unit_factor    
+        return root_mean_sq_diff*rmsd_unit_factor, residue_ids
+    
+    def Get_Dihedral(self, atom_indices, periodic=True, newchunk=100, unit='degrees'):
+        '''
+        Uses MDTraj compute_dihedrals to compute the dihedrals formed by input atom indices in each frame.
+        Input: atom_indices-> An array of shape (num_dihedrals,4) with each row giving indices of four atoms to compute dihedrals for.
+                              The angle is between the planes spanned by the first 3 atoms and the last 3 atoms, a torsion around the
+                              bond between the middle two atoms. 
+               periodic-> If periodic is True and the trajectory contains unitcell information, minimum image convention will be used
+                          for dihedrls crossing periodic boundary.
+               unit -> MDTraj default unit is radian. Here by default, angles are returned in degrees.
+        Returns: an array of shape (num_frames, num_dihedrals).
+        '''
+        dihed_angles = numpy.empty((0, numpy.shape(atom_indices)[0])) #Return array
+        #Reload Trajectory in case user already worked with few/all chunks, working with newchunk frames at a time
+        self.Reload(newchunk=newchunk)
+        
+        s_time = time.clock()
+        for partial_traj in self.traj_iter:
+            partial_dihed = md.compute_dihedrals(partial_traj, atom_indices, periodic=periodic)
+            dihed_angles = numpy.vstack((dihed_angles,partial_dihed))
+        e_time = time.clock()
+        print "Dihedral Calculation Finished! \nTotal time spent: \n\t%0.2f seconds process time\
+        \n\tOn average, %0.4f seconds per trajectory frame" % (e_time-s_time, (e_time-s_time)/numpy.array(dihed_angles).shape[0])
+        
+        if unit.lower() == 'degrees':
+            return numpy.degrees(dihed_angles)
+        else:
+            return dihed_angles
+
+    def Get_Atom_Object(self, res_name = None, atom_name = None):
+	target_residue_found = False
+	for target_residue in self.topology.residues:
+		if res_name == (target_residue.name+str(target_residue.index)).lower():
+			target_residue_found = True
+			#save atom object
+			target_atom_found = False
+			for target_atom in target_residue.atoms:
+				if atom_name == target_atom.name.lower():
+					target_atom_found = True
+					atom_ob = target_atom
+					break
+			if not target_atom_found:
+				raise ValueError('Atom %s was not found in residue %s' % (atom_name, res_name))
+	if not target_residue_found:
+		raise ValueError('Residue %s was not found in topology' % (res_name))
+	return atom_ob
+    
+    def Add_Bonds_to_Topology(self, bond_array=None, mdtraj_object=None):
+        '''
+        Add new bonds to topology file.
+        Input: bond_array-> An array of shape (num_of_bonds,2) with each row containing information on two atoms involved in bond.
+                            Each column contains atom specification in the format ResnameIndex-Atomname, for ex: TYR1-N.
+			    Note the residue index is the MDtraj resindex property which starts from 0 and is unique for each residue unlike PDB residue number.
+        '''
+	#Add each bond one at a time
+	for each_bond in bond_array:
+		first_res, first_res_atom = each_bond[0].split('-')[0].lower(), each_bond[0].split('-')[1].lower()
+		second_res, second_res_atom = each_bond[1].split('-')[0].lower(), each_bond[1].split('-')[1].lower()
+		#Get atom objects of first and second residue
+		atom1_ob = self.Get_Atom_Object(first_res, first_res_atom)
+		atom2_ob = self.Get_Atom_Object(second_res, second_res_atom)
+		#Add bond to topology
+		self.topology.add_bond(atom1_ob, atom2_ob)
+		if mdtraj_object !=None:
+			mdtraj_object.topology.add_bond(atom1_ob, atom2_ob)
+
         
             
         

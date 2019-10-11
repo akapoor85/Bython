@@ -56,6 +56,7 @@ def Process_Clusters(traj, cluster_labels, align_index=None, rmsd_index=None, sa
             #All Frames corresponding to this cluster from original trajectory
             traj_cluster_frames = traj[frame_indices]
             #Compute All pairwise RMSD required for cluster medoid calculation
+            
             rmsd_mat = numpy.empty((traj_cluster_frames.n_frames, traj_cluster_frames.n_frames))
             for f_index in range(traj_cluster_frames.n_frames):
                 traj_cluster_frames.superpose(traj_cluster_frames[f_index], atom_indices = align_index)
@@ -63,6 +64,7 @@ def Process_Clusters(traj, cluster_labels, align_index=None, rmsd_index=None, sa
             
             #Compute Similarity Score and return max(Similarity score) as medoid
             medoid_index = numpy.exp(-beta*rmsd_mat / rmsd_mat.std()).sum(axis=1).argmax()
+            #medoid_index = 0 
             c_medoid = traj_cluster_frames[medoid_index]
             c_spread = numpy.mean(rmsd_mat[medoid_index])
             max_rmsd = numpy.max(rmsd_mat[medoid_index])
@@ -111,10 +113,12 @@ def cmdscale(distance_matrix):
 def tanimoto_dissimilarity(fingerprint_matrix, relative=None):
     '''
     Borrowed from Davide's HREX analysis code, modified a bit to cover the case
-    of all 0 fingerprints. Tanimoto distance between two fingerprints with all 0 bits
+    of all 0 fingerprints (commented out). Tanimoto distance between two fingerprints with all 0 bits
     is set to 0. 
     '''
-    featuresum= numpy.sum(fingerprint_matrix, axis=1)
+    featuresum= numpy.sum(fingerprint_matrix, axis=1) # Number of on bits in each frame
+    '''
+    #Don't remember the logic behind this step but adding one doesn't seem right, so commenting it out
     #Check if any of the fingerprint is all zeros, and set varibales accordingly
     if not numpy.count_nonzero(featuresum) == featuresum.shape[0]: #Evaluates to True if there is a fingerprint with all 0 bits
         eps_regularize = 0 
@@ -122,7 +126,9 @@ def tanimoto_dissimilarity(fingerprint_matrix, relative=None):
     else:
         eps_regularize = 1e-5 
         add_one = 0
-    
+    '''
+    add_one = 0
+    eps_regularize= 1e-5
     ab= numpy.dot(fingerprint_matrix, fingerprint_matrix.T)
     a=numpy.repeat([featuresum],len(featuresum),axis=0)
     b=a.T

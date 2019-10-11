@@ -4,7 +4,7 @@ from __future__ import division
 import mdtraj as md
 import numpy
 from Bython.Cheminfo import Bymol
-from Bython.Structure.configstruc import NON_POLAR_ATOMS, PROTEIN_AROMATIC_RES, POLAR_ATOMS, PROTEIN_POSITIVE, PROTEIN_NEGATIVE, PROTEIN_POLAR_SC
+from Bython.Structure.configstruc import NON_POLAR_ATOMS, PROTEIN_AROMATIC_RES, POLAR_ATOMS, PROTEIN_POSITIVE, PROTEIN_NEGATIVE, PROTEIN_POLAR_SC, NONSTANDARD_AA, NONSTANDARD_AROMATIC_ATOMS
 from itertools import product, chain
 
 def lig_info(lig_ob_list=None):
@@ -14,7 +14,7 @@ def lig_info(lig_ob_list=None):
     lig_ring_indices = [lig_t.rings for lig_t in lig_ob_list]
     return lig_names, no_lig_aro, no_heavy_lig, lig_ring_indices
 
-def SIFT_7bit(traj_ob=None, lig_top=None, res_index=None, aro_cut=4.0, apolar_cut=4.5, hbond_cut=3.5,elec_cut=4.0,verbose=True, use_sc_only=False):
+def SIFT_7bit(traj_ob=None, lig_top=None, res_index=None, aro_cut=4.0, apolar_cut=4.5, hbond_cut=3.5,elec_cut=4.0,verbose=True, use_sc_only=False, res_index_include_all=[]):
     #Make a list of all protein residue indexes if res_index not defined
     if res_index == None:
         res_index = [traj_ob.topology.atom(atom_index).residue.index for atom_index in traj_ob.topology.select('protein and name CA')]
@@ -50,7 +50,7 @@ def SIFT_7bit(traj_ob=None, lig_top=None, res_index=None, aro_cut=4.0, apolar_cu
     #Go through each residue and compute its interaction with each ligands
     for q_res in res_index:
         #Get the residue heavy atom indices
-        if not use_sc_only:
+        if not use_sc_only or q_res in res_index_include_all:
             res_heavy_idx = [a_idx for a_idx in traj_ob.topology.select("resid " + str(q_res))
                              if traj_ob.topology.atom(a_idx).element.symbol != 'H']
         else:
@@ -60,11 +60,12 @@ def SIFT_7bit(traj_ob=None, lig_top=None, res_index=None, aro_cut=4.0, apolar_cu
             res_heavy_idx = [a_idx for a_idx in traj_ob.topology.select("resid " + str(q_res))
                              if traj_ob.topology.atom(a_idx).element.symbol != 'H' and traj_ob.topology.atom(a_idx).is_sidechain == True]
         
-        for l_idx in xrange(len(lig_names)):
+	for l_idx in xrange(len(lig_names)):
             #Initialize the residue bits for this ligand
             temp_bits = [0]*7
             #Create residue and ligand atom-pairs
             a_pairs_dist = list(product(numpy.array(res_heavy_idx), numpy.array(lig_heavy_indices[l_idx])))
+            #print(q_res, a_pairs_dist)
             #Compute all pairwise distances and covert to Angstrom; These distances are in nanometers
             pair_distances = md.compute_distances(traj_ob, a_pairs_dist)*10 #shape (1, no_of_a_pairs_dist)
             #Check If ligand is within Apolar interaction distance
@@ -142,6 +143,8 @@ def IsAromatic(traj_object, lig_object, pair_indices, pair_dist, aro_cut, min_li
     isf2f = False #Interaction is face to face
     #Combine all ring indices in ligand 
     all_lig_ring_idx = tuple([r_idx for r_idx in chain(*lig_object.rings)])
+    #Initialize the assign status for each ligand ring (so that a given ring is either e2f or f2f but not both)
+    ring_assign_status = [ False for r_idx in range(len(lig_object.rings))]
     #Check if any of the pairs is aromatic pair
     for a_pair in prospective_pairs:
         #Get the residue name (first index is for protein atom)
@@ -150,7 +153,7 @@ def IsAromatic(traj_object, lig_object, pair_indices, pair_dist, aro_cut, min_li
         if a1_res_name in PROTEIN_AROMATIC_RES:
             #Check if protein atom is in aromatic ring
             a1_atom_name = traj_object.topology.atom(a_pair[0]).name.lower()
-            if traj_object.topology.atom(a_pair[0]).is_sidechain and a1_atom_name not in ('cb', 'oh'): # oh for tyr
+            if (traj_object.topology.atom(a_pair[0]).is_sidechain and a1_atom_name not in ('cb', 'oh')) or ((traj_object.topology.atom(a_pair[0]).residue.name.lower() in NONSTANDARD_AA) and (a1_atom_name in NONSTANDARD_AROMATIC_ATOMS)): # oh for tyr
                 #Check if the ligand atom is also aromatic
                 if lig_object.property[a_pair[1]-min_lig_heavy_idx]['aromatic']: #a_pair[1]-min_lig_heavy_idx is the corresponding index in bymol object
                     ###Check the angles to see if inteaction is f2f or e2f###
@@ -176,11 +179,28 @@ def IsAromatic(traj_object, lig_object, pair_indices, pair_dist, aro_cut, min_li
                     uni_norm_prot_ring = prot_ring_normal / numpy.sqrt((prot_ring_normal*prot_ring_normal).sum()) #Unit-vector
                     #Get the angle between unit normal vectors
                     normal_thetha_deg = numpy.degrees(numpy.arccos(numpy.dot(uni_norm_lig_ring, uni_norm_prot_ring)))  # In radians
-                    
                     if normal_thetha_deg <= 30.0 or normal_thetha_deg >= 150.0:
-                        isf2f = True
-                    if normal_thetha_deg >= 30.0 and normal_thetha_deg <= 150.0:
-                        ise2f = True
+                        #Assign only if ring is not already assigned a interaction type (e2f or f2f)
+                        #Check the ring number of given ligand atom
+                        for each_ring_idx,each_ring in enumerate(lig_object.rings):
+                            #if atom is in a ring
+                            if a_pair[1]-min_lig_heavy_idx in each_ring:
+                                #and the ring has not been assigned
+                                if not ring_assign_status[each_ring_idx]:
+                                    ring_assign_status[each_ring_idx] = True
+                                    isf2f = True
+                                    break
+                    if normal_thetha_deg > 30.0 and normal_thetha_deg < 150.0:
+                        #Assign only if ring is not already assigned a interaction type (e2f or f2f)
+                        #Check the ring number of given ligand atom
+                        for each_ring_idx,each_ring in enumerate(lig_object.rings):
+                            #if atom is in a ring
+                            if a_pair[1]-min_lig_heavy_idx in each_ring:
+                                #and the ring has not been assigned
+                                if not ring_assign_status[each_ring_idx]:
+                                    ring_assign_status[each_ring_idx] = True
+                                    ise2f = True
+                                    break
                     #If both e2f and f2f have been assigned then no need to check further pairs for this residue
                     if isf2f and ise2f:
                         break
@@ -295,9 +315,11 @@ def GetNeighbor(traj_object, atom_name):
     Returns a tuple of Neighbors of atom (atom object is returned)
     atom_name (in the format ex. TYR86-CE1; mdtraj atom object)
     '''
+    #print atom_name
+    
     each_neighb = [list(each_bond) for each_bond in traj_object.topology.bonds if atom_name in each_bond]
     if not each_neighb:
-        raise Exception("Topology Object doesn't contain bond information. Use PDB file to define top in Readtraj")
+        raise Exception("Topology Object doesn't contain bond information for atoms in residue %s. Use PDB file to define top in Readtraj or pass add_bonds to SIFT function." % (atom_name.residue))
     neighbs = list(set([all_neighb for all_neighb in chain(*each_neighb)]))
     neighbs.remove(atom_name)
     return tuple(neighbs)
@@ -344,7 +366,7 @@ def Ligand_Neighbour(traj_ob, lig_pol_ind_list, neighb_cutoff):
         #Convert atom indices in all_ngb to residue lists
         for at_ind_allngb in all_ngb[0]: #all_ngb is a list of arrays
             current_atom = traj_ob.topology.atom(at_ind_allngb)
-            if current_atom.residue.is_protein:
+            if current_atom.residue.is_protein or current_atom.residue.name.lower() in NONSTANDARD_AA:
                 temp_prot.append(current_atom.residue.index)
             elif current_atom.residue.is_water and current_atom.element.symbol !='H':
                 temp_wat_resid.append(current_atom.residue.index)
@@ -447,11 +469,11 @@ def Ligand_Water_Hbond_Oxygen(traj_object, lig_polar_ind_list, water_oxy_ngb_lis
                                                       min(lig_hvy_idx_list[l_idx]))
                     if hbond_exist:
                         temp_oxy_hbond_list.append(a_pair[1])
-            hbond_oxy_ind.append(temp_oxy_hbond_list)
+        hbond_oxy_ind.append(temp_oxy_hbond_list)
     return hbond_oxy_ind
 
 def SIFT_9bit(traj_ob=None, lig_top=None, res_index=None, aro_cut=4.0, apolar_cut=4.5,
-              hbond_cut=3.5,elec_cut=4.0,verbose=True, use_sc_only=False, ligand_neighb_dist=None):
+              hbond_cut=3.5,elec_cut=4.0,verbose=True, use_sc_only=False, ligand_neighb_dist=None, res_index_include_all=[]):
     #Make a list of all protein residue indexes if res_index not defined
     if res_index == None:
         res_index = [traj_ob.topology.atom(atom_index).residue.index for atom_index in traj_ob.topology.select('protein and name CA')]
@@ -498,7 +520,7 @@ def SIFT_9bit(traj_ob=None, lig_top=None, res_index=None, aro_cut=4.0, apolar_cu
     #Go through each residue and compute its interaction with each ligands
     for q_res in res_index:
         #Get the residue heavy atom indices
-        if not use_sc_only:
+        if not use_sc_only or q_res in res_index_include_all:
             res_heavy_idx = [a_idx for a_idx in traj_ob.topology.select("resid " + str(q_res))
                              if traj_ob.topology.atom(a_idx).element.symbol != 'H']
         else:
@@ -559,8 +581,9 @@ def SIFT_9bit(traj_ob=None, lig_top=None, res_index=None, aro_cut=4.0, apolar_cu
             
             #Check for one- and two-water mediated interactions
             #Proceed only if ligand forms H-bond with waters and the residue is a ligand neighbor and has polar sidechain (if sidechain only interactions) 
+	    #Additionally proceed also if residue is in the list for which both sidechain and backbone atoms are considered.
             if oxy_water_hbond_ligand[l_idx] and q_res in protein_neighb[l_idx]:
-                if use_sc_only and traj_ob.topology.residue(q_res).name.lower() not in PROTEIN_POSITIVE+PROTEIN_NEGATIVE+PROTEIN_POLAR_SC:
+                if (use_sc_only and not q_res in res_index_include_all) and traj_ob.topology.residue(q_res).name.lower() not in PROTEIN_POSITIVE+PROTEIN_NEGATIVE+PROTEIN_POLAR_SC:
                     #Append temp_bits to sift9bits before skipping
                     if not sift9bit.has_key(l_idx):
                         sift9bit[l_idx] = temp_bits

@@ -47,9 +47,9 @@ def Loadpdb(pdb=None, hetatm= True, verbose=False):
             #Check for unrecognized residue and new molecule
             if not first_res:
                 if ResName.lower() not in Mol_types['protein'] + Mol_types['lipid'] + Mol_types['ligand']:
-                    print "*** Unrecognized residue name: "+ ResName+ " ***."
+                    print "*** Unrecognized residue name: "+ ResName+ " ***.\nAdded %s as Ligand." % ResName
                     sys.exit("In file configstruc.py: Add missing residue name("+ ResName+ ") to appropriate molecule in Mol_types")
-                elif ResNo != Prev_res or (Prev_chain != Chain and mol.molecule_type().lower()=='ligand'):
+                if ResNo != Prev_res or (Prev_chain != Chain and mol.molecule_type().lower()=='ligand'):
                     if mol.molecule_type().lower()=='ligand':
                         mol_data[Molecule.molid] = deepcopy(mol) #copy mol object into dictionary
                         first_res = True

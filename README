@@ -1,21 +1,27 @@
-Bython (BioPython) is a python package to do computation on biological macromolecules such as proteins, lipids, small molecules etc. It is an effort to better organize my existing code (developed during my PhD) along with new functionalities into one comprehensive package.
+Bython (BioPython) is a python package to do computation on biological macromolecules such as proteins, lipids, small molecules etc. It is an effort to better organize my existing code along with new functionalities into one comprehensive package.
 
-The code is under active development and no way near completion. The functionalities introduced so far have been tested locally. Please leave a comment (abhijeet.kapoor@mssm.edu) if you have any suggestions, or report an issue if you find some bugs.
+The code is under active development and the functionalities introduced so far have been tested locally. Please leave a comment (kapoor.abhijeet@gmail.com) if you have any suggestions, or report an issue if you find some bugs.
 
 LICENSE
 	Bython is licensed under MIT license.
 
 SUPPORT
-	Bython Wiki: https://git.mssm.edu/kapooa03/Bython/wiki
-	Bug reports can be filed here: https://git.mssm.edu/kapooa03/Bython/issues
+	Bython Wiki: https://github.com/akapoor85/Bython/wiki
+	Bug reports can be filed here: https://github.com/akapoor85/Bython/issues
+
+EXPECTED FEATURES IN NEXT UPDATE
+	Error estimates for SIFT
+	Deep-learning module for trajectory analysis.
 
 RECENT UPDATES
-	October 2016
-		Added 9-bit/residue SIFT calculation on trajectory for any number of ligands; last 2 bits are for one-water and two-water mediated hydrogen bonds.
-		Modified plotSIFT to plot SIFT figures.
-		Added function to calculate RMSF over trajectory.
+	October 2019
+		Added 7-bit SIFT calculation between protein-protein residues.
+		Fixed a bug in ligand-protein SIFT aromatic calculation.
 
 PREVIOUS UPDATES
+	Added 9-bit/residue SIFT calculation on trajectory for any number of ligands; last 2 bits are for one-water and two-water mediated hydrogen bonds.
+	Modified plotSIFT to plot SIFT figures.
+	Added function to calculate RMSF over trajectory.	 
 	Added sidechain chi dihedral calculation in Structure
 	Added classical MDS and 2D plots in trajectory figures
 	Added trajectory RMSD matrix calculation, clustering and analysis methods

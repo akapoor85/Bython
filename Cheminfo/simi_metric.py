@@ -5,7 +5,7 @@ import sys
 
 def GetSimilarity(rdkmol1, rdkmol2, metric='tanimoto'):
     '''
-    mol1 and mol2 are RDKit mol objects
+    mol1 and mol2 are RDKit fingerprint objects for molecule
     '''
     valid_metric = ('tanimoto', 'dice', 'cosine', 'sokal', 'russel', 'kulczynski', 'mcconnaughey')
     if metric.lower() == 'tanimoto':

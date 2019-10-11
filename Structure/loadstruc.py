@@ -42,7 +42,7 @@ def Loadstruc(intype=None, filename=None, hetatm = True, verbose=False):
         assert(intype.lower() in Struc_in_formats) #Check if input format recognized
         strucfile = open(filename, 'r')
     except AssertionError:
-        sys.exit("Bython does not handle "+intype+" input files")
+        sys.exit("Bython Structure does not handle "+intype+" input files")
     except IOError:
         sys.exit("Cannot locate file "+ filename+ ". Invalid filename or path!")
     

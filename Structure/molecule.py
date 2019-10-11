@@ -7,6 +7,7 @@ import numpy
 import sys
 import os
 from Bython.StrucUtils import DistMat
+from Bython.Structure.configstruc import NON_POLAR_ATOMS, POLAR_ATOMS
 
 class Molecule:
     'Abstract Base class for a molecule'
@@ -153,7 +154,7 @@ class Molecule:
         elif criteria.lower() == 'cb':
             select = ['cb']
         elif criteria.lower() == 'polar':
-            select = ['n', 'o']
+            select = list(POLAR_ATOMS)
         elif criteria.lower() in ['backbone', 'sidechain']:
             select = ['n', 'c', 'ca', 'o']
         
@@ -171,7 +172,7 @@ class Molecule:
                 elif criteria.lower() == 'heavy' and OBsubset.residue[key]['atoms'][atm_id]['name'][0].lower() == 'h':
                     del OBsubset.residue[key]['atoms'][atm_id]
                     OBsubset.atmidx.remove(atm_id)
-                elif criteria.lower() == 'polar' and OBsubset.residue[key]['atoms'][atm_id]['name'][0].lower() not in ['n', 'o']:
+                elif criteria.lower() == 'polar' and OBsubset.residue[key]['atoms'][atm_id]['name'][0].lower() not in list(POLAR_ATOMS):
                     del OBsubset.residue[key]['atoms'][atm_id]
                     OBsubset.atmidx.remove(atm_id)
                 elif criteria.lower() == 'carbons' and OBsubset.residue[key]['atoms'][atm_id]['name'][0].lower() != 'c':
